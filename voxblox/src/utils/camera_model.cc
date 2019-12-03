@@ -1,5 +1,5 @@
 #include "voxblox/utils/camera_model.h"
-
+#include <iostream>
 namespace voxblox {
 
 void Plane::setFromPoints(const Point& p1, const Point& p2, const Point& p3) {
@@ -101,7 +101,9 @@ void CameraModel::setBodyPose(const Transformation& body_pose) {
 }
 
 void CameraModel::calculateBoundingPlanes() {
+  //std::cout << "Calculate Bounding Planes \n";
   if (!initialized_) {
+     //std::cout << "Not Initialized \n";
     return;
   }
 
@@ -120,33 +122,33 @@ void CameraModel::calculateBoundingPlanes() {
 
   // Near plane.
   bounding_planes_[0].setFromPoints(corners_G[0], corners_G[2], corners_G[1]);
-  VLOG(5) << "Near plane: Normal: " << bounding_planes_[0].normal().transpose()
-          << " distance: " << bounding_planes_[0].distance();
+  //std::cout << "Near plane: Normal: " << bounding_planes_[0].normal().transpose()
+  //        << " distance: " << bounding_planes_[0].distance();
   // Far plane.
   bounding_planes_[1].setFromPoints(corners_G[4], corners_G[5], corners_G[6]);
-  VLOG(5) << "Far plane: Normal: " << bounding_planes_[1].normal().transpose()
-          << " distance: " << bounding_planes_[1].distance();
+  //std::cout << "Far plane: Normal: " << bounding_planes_[1].normal().transpose()
+  //        << " distance: " << bounding_planes_[1].distance();
 
   // Left.
   bounding_planes_[2].setFromPoints(corners_G[3], corners_G[6], corners_G[2]);
-  VLOG(5) << "Left plane: Normal: " << bounding_planes_[2].normal().transpose()
-          << " distance: " << bounding_planes_[2].distance();
+  //std::cout << "Left plane: Normal: " << bounding_planes_[2].normal().transpose()
+  //        << " distance: " << bounding_planes_[2].distance();
 
   // Right.
   bounding_planes_[3].setFromPoints(corners_G[0], corners_G[5], corners_G[4]);
-  VLOG(5) << "Right plane: Normal: " << bounding_planes_[3].normal().transpose()
-          << " distance: " << bounding_planes_[3].distance();
+  //std::cout << "Right plane: Normal: " << bounding_planes_[3].normal().transpose()
+  //        << " distance: " << bounding_planes_[3].distance();
 
   // Top.
   bounding_planes_[4].setFromPoints(corners_G[3], corners_G[4], corners_G[7]);
-  VLOG(5) << "Top plane: Normal: " << bounding_planes_[4].normal().transpose()
-          << " distance: " << bounding_planes_[4].distance();
+  //std::cout << "Top plane: Normal: " << bounding_planes_[4].normal().transpose()
+  //        << " distance: " << bounding_planes_[4].distance();
 
   // Bottom.
   bounding_planes_[5].setFromPoints(corners_G[2], corners_G[6], corners_G[5]);
-  VLOG(5) << "Bottom plane: Normal: "
-          << bounding_planes_[5].normal().transpose()
-          << " distance: " << bounding_planes_[5].distance();
+  //std::cout << "Bottom plane: Normal: "
+  //        << bounding_planes_[5].normal().transpose()
+  //        << " distance: " << bounding_planes_[5].distance();
 
   // Calculate AABB.
   aabb_min_.setConstant(std::numeric_limits<double>::max());
@@ -159,13 +161,14 @@ void CameraModel::calculateBoundingPlanes() {
     }
   }
 
-  VLOG(5) << "AABB min:\n" << aabb_min_.transpose() << "\nAABB max:\n"
-          << aabb_max_.transpose();
+  //std::cout << "AABB min:\n" << aabb_min_.transpose() << "\nAABB max:\n"
+  //        << aabb_max_.transpose();
 }
 
 void CameraModel::getAabb(Point* aabb_min, Point* aabb_max) const {
   *aabb_min = aabb_min_;
   *aabb_max = aabb_max_;
+  //std::cout << "Camera model aabb min" << aabb_min_(0) << aabb_min_(1) << aabb_min_(2) ;
 }
 
 bool CameraModel::isPointInView(const Point& point) const {
