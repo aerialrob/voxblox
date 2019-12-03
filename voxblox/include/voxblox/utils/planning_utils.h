@@ -3,6 +3,7 @@
 
 #include "voxblox/core/layer.h"
 #include "voxblox/core/voxel.h"
+#include <mav_msgs/eigen_mav_msgs.h>
 
 namespace voxblox {
 namespace utils {
@@ -18,9 +19,18 @@ void getSphereAroundPoint(const Layer<VoxelType>& layer, const Point& center,
  * blocks that don't already exist.
  */
 template <typename VoxelType>
-void getAndAllocateSphereAroundPoint(const Point& center, FloatingPoint radius,
+void getAndAllocateSphereAroundPoint(const Point& center,FloatingPoint radius,
                                      Layer<VoxelType>* layer,
                                      HierarchicalIndexMap* block_voxel_list);
+
+
+
+
+template <typename VoxelType>
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, HierarchicalIndexMap* block_voxel_list);
+
+template <typename VoxelType>
+void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
 
 /**
  * Tools for manually editing a set of voxels. Sets the values around a sphere

@@ -221,7 +221,16 @@ void EsdfServer::setTraversabilityRadius(float traversability_radius) {
 
 void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   if (clear_sphere_for_planning_) {
-    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition());
+    mav_msgs::EigenTrajectoryPoint pose;
+    Eigen::Vector3d point{T_G_C.getPosition().x(), T_G_C.getPosition().y(), T_G_C.getPosition().z()};
+    pose.position_W = point;
+
+    Eigen::Quaternion<float> q = T_G_C.getEigenQuaternion();
+    Eigen::Quaterniond quat{q.w(), q.x(), q.y(), q.z()};
+    pose.orientation_W_B = quat;
+    
+
+    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), pose);
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");
