@@ -492,7 +492,7 @@ void TsdfServer::publishPointclouds() {
 
 void TsdfServer::updateMesh() {
   if (verbose_) {
-    ROS_INFO("Updating mesh.");
+    ROS_INFO_ONCE("Updating mesh.");
   }
 
   timing::Timer generate_mesh_timer("mesh/update");

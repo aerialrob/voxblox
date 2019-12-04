@@ -12,6 +12,7 @@
 #include <iostream>
 #include "voxblox/core/common.h"
 #include <kindr/minimal/quat-transformation.h>
+#include <cmath>
 //#include <voxblox_planning_common/gain_evaluator.h>
 
 namespace voxblox {
@@ -82,37 +83,17 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
 
   //Get FOV of camera 
   // Initialize camera 
-  double horizontal_fov = (60 * 3.1416)/180;
-  double vertical_fov = (49.5 * 3.1416)/180;
+  const double pi = std::acos(-1);
+  double horizontal_fov = (60 * pi)/180;
+  double vertical_fov = (49.5 * pi)/180;
   double min_distance = 0.6;
   double max_distance = 8;
   const FloatingPoint max_distance_in_voxels = max_distance / voxel_size;
   voxblox::CameraModel cam_model_;
 
-  //const voxblox::Transformation T_C_B_;
-    //0.128, 0.000, 0.090
-  // Eigen::Matrix<FloatingPoint, 4, 4> T_C_B;
-  //   T_C_B <<  1.000000,  0.000000, 0.000000, 0.128,
-  //             0.000000,  1.000000, 0.000000, 0.000,
-  //             0.000000,  0.000000, 1.000000, 0.090,
-  //             0.      ,  0.      , 0.      ,  1.;
-  //   // clang-format on
-  //T_C_B_ = Transformation(T_C_B);
-
-  // Eigen::Vector4d q(0.0, 0.0, 0.0, 1.0);
-  // Rotation q1(q[0], q[1], q[2], q[3]);
-  // Eigen::Vector3d t(  0.128,  0.000,  0.090 );
-  // typedef kindr::minimal::QuatTransformation Transformation;
-  // Transformation T_C_E_(q1,t);
-
- 
-  //const Vector6 x_t_r{0.128,  0.000,  0.090, 0.0, 0.0, 0.0};
-  //Transformation T_C_E_{0.128,  0.000,  0.090, 0.0, 0.0, 0.0};
-
   Point origin(0.128,  0.000,  0.090);
   Transformation T_C_B_(origin,
                          Eigen::Quaternion<FloatingPoint>(0.0, 0.0, 0.0, 1.0));
-
   cam_model_.setExtrinsics(T_C_B_);
 
   
@@ -126,26 +107,40 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
   // Get the boundaries of the current view.
   Eigen::Vector3f aabb_min, aabb_max;
   cam_model_.getAabb(&aabb_min, &aabb_max);
-  std::cout << "[VOXLOX] Exploration gain, cam model boundaries \n"<< aabb_min.x() << aabb_min.y() <<aabb_min.z() ;
-  std::cout << "[VOXLOX] Exploration gain, cam model boundaries \n"<< aabb_max.x() << aabb_max.y() <<aabb_max.z() ;
-  //std::cout << "[VOXLOX] Pose \n"<< pose.position_W.x() << pose.position_W.y() << pose.position_W.z() ;
-  //std::cout << "[VOXLOX] Orientation \n"<< pose.orientation_W_B.w(), pose.orientation_W_B.x() << pose.orientation_W_B.y() << pose.orientation_W_B.z() ;
+  std::cout << "[VOXLOX] Exploration gain, cam model boundaries \n"<< aabb_min.x() << " " << aabb_min.y() << " "  <<aabb_min.z() ;
+  std::cout << "[VOXLOX] Exploration gain, cam model boundaries \n"<< aabb_max.x() << " " << aabb_max.y() << " " <<aabb_max.z() ;
+  std::cout << "[VOXLOX] Pose \n"<< pose.position_W.x() << " " << pose.position_W.y() << " " << pose.position_W.z() ;
+  std::cout << "[VOXLOX] Orientation \n"<< pose.orientation_W_B.w() << " " <<  pose.orientation_W_B.x() << " " << pose.orientation_W_B.y() << " " << pose.orientation_W_B.z() ;
   Eigen::Vector3f pos = aabb_min/voxel_size;
   aabb_min = aabb_min/voxel_size;
   aabb_max = aabb_max/voxel_size;
   
-  for (pos.x() = aabb_min.x(); pos.x() < aabb_max.x(); pos.x() ++) {
-    for (pos.y() = aabb_min.y(); pos.y() < aabb_max.y();
-         pos.y() ++) {
-      for (pos.z() = aabb_min.z(); pos.z() < aabb_max.z();
-           pos.z() ++) {
+  double tan_half_horizontal_fov = tanf(horizontal_fov / 2.0);
+  double tan_half_vertical_fov = tanf(vertical_fov / 2.0);
+ 
+  double hoz_fov_voxels = tan_half_horizontal_fov / voxel_size;
+  double vert_fov_voxels = tan_half_vertical_fov / voxel_size;
 
-          Point point_voxel_space(pos.x(), pos.y(), pos.z());
+   std::cout << "[VOXLOX] horz, vert, vox h, vox v, distance \n"<< tan_half_horizontal_fov << " " << tan_half_vertical_fov << " "  << hoz_fov_voxels << " "  << vert_fov_voxels << " " << max_distance_in_voxels;
+
+  // for (FloatingPoint x = -10; x < 10; x ++) {
+  //   for ( FloatingPoint y = -30; y < 30; y ++) {
+  //     for (FloatingPoint z = -70; z < 70; z ++) {
+ for (FloatingPoint x = 0; x <= max_distance_in_voxels; x++) {
+      float ybound = (x*voxel_size * tan_half_horizontal_fov)/voxel_size;
+      float zbound = (x*voxel_size * tan_half_vertical_fov)/voxel_size;
+    for (FloatingPoint y = -ybound ; y <= ybound; y++) {
+      for (FloatingPoint z = -zbound; z <= zbound; z++) {
+
+          Point point_voxel_space(x, y, z);
+          Eigen::Vector3d position{x,y,z};
+          Eigen::Vector3d position_rot = pose.orientation_W_B.toRotationMatrix() * position;
+          Point point_voxel_space_rot(position_rot[0], position_rot[1],position_rot[2]);
                   // check if point is inside the spheres radius
-        if (point_voxel_space.norm() <= max_distance_in_voxels) {
-          GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
-                                         std::floor(point_voxel_space.y()),
-                                         std::floor(point_voxel_space.z()));
+        if (point_voxel_space_rot.norm() <= max_distance_in_voxels) {
+          GlobalIndex voxel_offset_index(std::floor(point_voxel_space_rot.x()),
+                                         std::floor(point_voxel_space_rot.y()),
+                                         std::floor(point_voxel_space_rot.z()));
           // Get the block and voxel indices from this.
           BlockIndex block_index;
           VoxelIndex voxel_index;

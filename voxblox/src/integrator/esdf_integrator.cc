@@ -30,8 +30,8 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
   utils::getAndAllocateFOVAroundPoint(position, pose, config_.clear_sphere_radius, 
                                       esdf_layer_, &block_voxel_list );
-  //utils::getAndAllocateSphereAroundPoint(position, rotation, config_.clear_sphere_radius,
-  //                                       esdf_layer_, &block_voxel_list);
+  utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
+                                        esdf_layer_, &block_voxel_list);
   sphere_timer.Stop();
   for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list) {
     // Get block.
