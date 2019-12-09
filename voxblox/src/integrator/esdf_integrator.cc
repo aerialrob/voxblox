@@ -1,7 +1,7 @@
 #include <voxblox/utils/planning_utils.h>
 
 #include "voxblox/integrator/esdf_integrator.h"
-
+#include <iostream>
 namespace voxblox {
 
 EsdfIntegrator::EsdfIntegrator(const Config& config,
@@ -28,33 +28,69 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
   // First set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
+
+  // Create a clear area with the FOV shape
   utils::getAndAllocateFOVAroundPoint(position, pose, config_.clear_sphere_radius, 
                                       esdf_layer_, &block_voxel_list );
   utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
                                         esdf_layer_, &block_voxel_list);
   sphere_timer.Stop();
+ 
+  //int global_x_idx;
+  //int global_y_idx;
+  //int global_z_idx;
   for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list) {
     // Get block.
     Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
+    //std::cout << "[ESDF Integrator] BlockIndex \n"<< kv.first ;
 
     for (const VoxelIndex& voxel_index : kv.second) {
       if (!block_ptr->isValidVoxelIndex(voxel_index)) {
         continue;
       }
+      //bool skip = false;
       EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
+      //GlobalIndex global_idx = getGlobalVoxelIndexFromBlockAndVoxelIndex(
+      //        kv.first, voxel_index, voxels_per_side_);
       // We can clear unobserved or hallucinated voxels.
+
+      //if((esdf_voxel.observed) && (esdf_voxel.distance <= 0.5)){
+      //  global_x_idx = global_idx.x();
+      //  global_y_idx = global_idx.y();
+      //  global_z_idx = global_idx.z();
+      //}
+      //std::cout << "[ESDF Integrator] Voxek index \n"<< voxel_index ;
+      
       if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
-        if (esdf_voxel.hallucinated) {
+      //  if((global_idx.x() > global_x_idx) && (global_idx.y() == global_y_idx) && (global_idx.z() == global_z_idx))
+      //  {
+          //std::cout << "[ESDF Integrator] Skip \n"<< global_idx ;
+      //    esdf_voxel.observed = false;
+      //    esdf_voxel.hallucinated = false;
+      //    esdf_voxel.parent.setZero();
+      //    updated_blocks_.insert(kv.first);
+      //    skip = true;
+      //  }else{
+        
+         if (esdf_voxel.hallucinated) {
           GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
               kv.first, voxel_index, voxels_per_side_);
           raise_.push(global_index);
+          //std::cout << "[ESDF Integrator] global_index \n"<< global_index ;
         }
-        esdf_voxel.distance = config_.default_distance_m;
-        esdf_voxel.observed = true;
-        esdf_voxel.hallucinated = true;
-        esdf_voxel.parent.setZero();
-        updated_blocks_.insert(kv.first);
+        //std::cout << "[ESDF Integrator] Voxel_index \n"<< voxel_index ;
+        //if(!skip){
+          esdf_voxel.distance = config_.default_distance_m;
+          esdf_voxel.observed = true;
+          esdf_voxel.hallucinated = true;
+          esdf_voxel.parent.setZero();
+          updated_blocks_.insert(kv.first);
+       // }
+        
+
+       // }
       }
+      
     }
   }
 

@@ -230,30 +230,27 @@ void EsdfServer::setTraversabilityRadius(float traversability_radius) {
 void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   if (clear_sphere_for_planning_) {
     mav_msgs::EigenTrajectoryPoint pose;
-    Eigen::Vector3d point{T_G_C.getPosition().x(), T_G_C.getPosition().y(), T_G_C.getPosition().z()};
-    pose.position_W = point;
-
-    Eigen::Quaternion<float> q = T_G_C.getEigenQuaternion();
-    Eigen::Quaterniond quat{q.w(), q.x(), q.y(), q.z()};
-    pose.orientation_W_B = quat;
-    ROS_ERROR("[ESDF SERVER] Pose %f, %f, %f", pose.position_W.x() ,pose.position_W.y() ,pose.position_W.z()) ;
-    ROS_ERROR("[ESDF SERVER] Orientation %f, %f, %f, %f",pose.orientation_W_B.w() , pose.orientation_W_B.x() ,pose.orientation_W_B.y() ,pose.orientation_W_B.z()) ;
     
+    //Eigen::Vector3d point{T_G_C.getPosition().x(), T_G_C.getPosition().y(), T_G_C.getPosition().z()};
+    //pose.position_W = point;
 
+    //Eigen::Quaternion<float> q = T_G_C.getEigenQuaternion();
+    //Eigen::Quaterniond quat{q.w(), q.x(), q.y(), q.z()};
+    //pose.orientation_W_B = quat;
+    //ROS_ERROR("[ESDF SERVER] Pose %f, %f, %f", pose.position_W.x() ,pose.position_W.y() ,pose.position_W.z()) ;
+    //ROS_ERROR("[ESDF SERVER] Orientation %f, %f, %f, %f",pose.orientation_W_B.w() , pose.orientation_W_B.x() ,pose.orientation_W_B.y() ,pose.orientation_W_B.z()) ;
+    
+    // Get the transform from world to odometry sensor
     tf::TransformListener listener;
     tf::StampedTransform transform_orig;
     tf::Transform transform;
     listener.waitForTransform("world", "t265_link", ros::Time::now(), ros::Duration(1.0));
     listener.lookupTransform("world", "t265_link", ros::Time(0), transform_orig);
-    transform_orig.getOrigin();
-    //transform.setOrigen(transform_orig.getOrigin());
-    //transform.setRotation(transform_orig.getRotation());
-    Eigen::Vector3d point2{transform_orig.getOrigin().x(), transform_orig.getOrigin().y(), transform_orig.getOrigin().z()};
-    pose.position_W = point2;
-    //Eigen::Quaternion<float> q2 = transform_orig.getEigenQuaternion();
-    Eigen::Quaterniond quat2{transform_orig.getRotation().w(), transform_orig.getRotation().x(), transform_orig.getRotation().y(),transform_orig.getRotation().z()};
-    pose.orientation_W_B = quat2; //transform_orig.getRotation();
-    Point position{transform_orig.getOrigin()[0], transform_orig.getOrigin()[1],transform_orig.getOrigin()[2] };
+    Eigen::Vector3d point{transform_orig.getOrigin().x(), transform_orig.getOrigin().y(), transform_orig.getOrigin().z()};
+    pose.position_W = point;
+    Eigen::Quaterniond quat{transform_orig.getRotation().w(), transform_orig.getRotation().x(), transform_orig.getRotation().y(),transform_orig.getRotation().z()};
+    pose.orientation_W_B = quat; 
+    Point position{float(transform_orig.getOrigin()[0]), float(transform_orig.getOrigin()[1]),float(transform_orig.getOrigin()[2])};
 
     esdf_integrator_->addNewRobotPosition(position, pose);
   }
