@@ -87,7 +87,7 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
   double horizontal_fov = (60 * pi)/180;
   double vertical_fov = (49.5 * pi)/180;
   double min_distance = 0.6;
-  double max_distance = 8;
+  double max_distance = 5;
   const FloatingPoint max_distance_in_voxels = max_distance / voxel_size;
   //voxblox::CameraModel cam_model_;
 
@@ -134,10 +134,10 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
           Point point_voxel_space_rot(position_rot[0], position_rot[1],position_rot[2]);
                   // check if point is inside the spheres radius
         
-        // Remove all voxels with z coordiated smaller than 0
-        if(point_voxel_space_rot.z() < 0.0){
-          point_voxel_space_rot.z() = 0.0;
-        }
+        // // Remove all voxels with z coordiated smaller than 0
+        // if(point_voxel_space_rot.z() < 0.0){
+        //   point_voxel_space_rot.z() = 0.0;
+        // }
 
         if (point_voxel_space_rot.norm() <= max_distance_in_voxels) {
           GlobalIndex voxel_offset_index(std::floor(point_voxel_space_rot.x()),

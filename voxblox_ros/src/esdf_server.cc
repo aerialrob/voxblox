@@ -244,8 +244,8 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
     tf::TransformListener listener;
     tf::StampedTransform transform_orig;
     tf::Transform transform;
-    listener.waitForTransform("world", "t265_link", ros::Time::now(), ros::Duration(1.0));
-    listener.lookupTransform("world", "t265_link", ros::Time(0), transform_orig);
+    listener.waitForTransform("beacon_map", "robot_base", ros::Time::now(), ros::Duration(1.0));
+    listener.lookupTransform("beacon_map", "robot_base", ros::Time(0), transform_orig);
     Eigen::Vector3d point{transform_orig.getOrigin().x(), transform_orig.getOrigin().y(), transform_orig.getOrigin().z()};
     pose.position_W = point;
     Eigen::Quaterniond quat{transform_orig.getRotation().w(), transform_orig.getRotation().x(), transform_orig.getRotation().y(),transform_orig.getRotation().z()};
