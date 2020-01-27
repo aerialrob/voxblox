@@ -207,6 +207,10 @@ void TsdfServer::getServerConfigFromRosParam(
     ROS_ERROR_STREAM("Invalid color map: " << intensity_colormap);
   }
   color_map_->setMaxValue(intensity_max_value);
+
+  nh_private.param("max_distance_pointcloud",
+                   max_distance_pointcloud_,
+                   max_distance_pointcloud_);
 }
 
 
@@ -236,17 +240,17 @@ void TsdfServer::processPointCloudMessageAndInsert(
     pcl::PointCloud<pcl::PointXYZRGB> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
   } else if (has_intensity) {
     pcl::PointCloud<pcl::PointXYZI> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
   } else {
     pcl::PointCloud<pcl::PointXYZ> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
   }
   ptcloud_timer.Stop();
 
