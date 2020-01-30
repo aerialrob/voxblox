@@ -158,7 +158,6 @@ for (FloatingPoint z = 0; z < 2; z++) {
 
 }
 
-
 template <typename VoxelType>
 void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose,
                           FloatingPoint radius,
@@ -170,7 +169,6 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
 
   const GlobalIndex center_index =
       getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
-  //const FloatingPoint radius_in_voxels = radius / voxel_size;
 
   // Initialize camera 
   const double pi = std::acos(-1);
@@ -178,19 +176,14 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
   double vertical_fov = (49.5 * pi)/180;
   double max_distance = 5;
   const FloatingPoint max_distance_in_voxels = max_distance / voxel_size;
- 
-  std::cout << "[VOXLOX] Pose \n"<< pose.position_W.x() << " " << pose.position_W.y() << " " << pose.position_W.z() ;
-  std::cout << "[VOXLOX] Orientation \n"<< pose.orientation_W_B.w() << " " <<  pose.orientation_W_B.x() << " " << pose.orientation_W_B.y() << " " << pose.orientation_W_B.z() ;
-  
   double tan_half_horizontal_fov = tanf(horizontal_fov / 2.0);
   double tan_half_vertical_fov = tanf(vertical_fov / 2.0);
-
- //bool obstacle = false;
+ 
  for (FloatingPoint x = 0; x <= max_distance_in_voxels; x++) {
       // Create the y and z bound as a function of the range x 
       float ybound = (x*voxel_size * tan_half_horizontal_fov)/voxel_size;
       float zbound = (x*voxel_size * tan_half_vertical_fov)/voxel_size;
-    //if(!obstacle){
+   
     for (FloatingPoint y = -ybound ; y <= ybound; y++) {
       for (FloatingPoint z = -zbound; z <= zbound; z++) {
           Point point_voxel_space(x, y, z);
@@ -199,8 +192,7 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
           // Rotate position of voxels using the orientation of the odometry
           Eigen::Vector3d position_rot = pose.orientation_W_B.toRotationMatrix() * position;
           Point point_voxel_space_rot(position_rot[0], position_rot[1],position_rot[2]);
-                  // check if point is inside the spheres radius
-
+         // check if point is inside the spheres radius
         if (point_voxel_space_rot.norm() <= max_distance_in_voxels) {
           GlobalIndex voxel_offset_index(std::floor(point_voxel_space_rot.x()),
                                          std::floor(point_voxel_space_rot.y()),
@@ -212,9 +204,9 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
           getBlockAndVoxelIndexFromGlobalVoxelIndex(
               voxel_offset_index + center_index, voxels_per_side, &block_index,
               &voxel_index);
+              (*block_voxel_list)[block_index].push_back(voxel_index);
 
-                (*block_voxel_list)[block_index].push_back(voxel_index);
-
+          
         }
 
         }

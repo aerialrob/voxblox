@@ -88,6 +88,8 @@ class EsdfIntegrator {
     double z_min = 0;
     double z_max = 2;
 
+    bool limit_area = false;
+
   FloatingPoint robot_radius = 0.5;
   };
 

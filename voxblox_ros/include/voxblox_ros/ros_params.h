@@ -172,8 +172,10 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
                    esdf_integrator_config.z_min);    
   nh_private.getParam("z_max",
                    esdf_integrator_config.z_max);     
-
-
+  nh_private.param("limit_area",
+                   esdf_integrator_config.limit_area,
+                   esdf_integrator_config.limit_area);
+                   
   if (esdf_integrator_config.default_distance_m <
       esdf_integrator_config.max_distance_m) {
     esdf_integrator_config.default_distance_m =
