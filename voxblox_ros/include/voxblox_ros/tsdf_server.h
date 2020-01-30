@@ -252,6 +252,11 @@ class TsdfServer {
   std::queue<sensor_msgs::PointCloud2::Ptr> pointcloud_queue_;
   std::queue<sensor_msgs::PointCloud2::Ptr> freespace_pointcloud_queue_;
 
+  /**
+  * Distance in z above which the pointcloud data is ignored
+  */
+  double max_distance_pointcloud_;
+
   // Last message times for throttling input.
   ros::Time last_msg_time_ptcloud_;
   ros::Time last_msg_time_freespace_ptcloud_;
