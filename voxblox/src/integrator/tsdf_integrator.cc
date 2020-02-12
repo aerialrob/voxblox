@@ -193,8 +193,11 @@ void TsdfIntegratorBase::updateTsdfVoxel(const Point& origin,
   }
 
   const float new_sdf =
-      (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
+      (sdf * tsdf_voxel->weight + (tsdf_voxel->distance * tsdf_voxel->weight)) /
       new_weight;
+  // std::cout << "New_sdf:" << new_sdf << " sdf " << sdf << "  update_weight"
+  // << updated_weight << "   tsdf distance" << tsdf_voxel->distance << " tsdf
+  // weight"<<  tsdf_voxel->weight << " new weight" << new_weight << "\n";
 
   // color blending is expensive only do it close to the surface
   if (std::abs(sdf) < config_.default_truncation_distance) {
@@ -233,7 +236,7 @@ float TsdfIntegratorBase::getVoxelWeight(const Point& point_C) const {
   }
   const FloatingPoint dist_z = std::abs(point_C.z());
   if (dist_z > kEpsilon) {
-    return 1.0f / (dist_z * dist_z);
+    return 1.0f / (dist_z * dist_z);  // 500.0f / (dist_z * dist_z);
   }
   return 0.0f;
 }
@@ -402,9 +405,9 @@ void MergedTsdfIntegrator::integrateVoxel(
       break;
     }
   }
+  // merged_weight = 10.0;
 
   const Point merged_point_G = T_G_C * merged_point_C;
-
   RayCaster ray_caster(origin, merged_point_G, clearing_ray,
                        config_.voxel_carving_enabled, config_.max_ray_length_m,
                        voxel_size_inv_, config_.default_truncation_distance);

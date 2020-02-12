@@ -30,7 +30,7 @@ template <typename VoxelType>
 void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, HierarchicalIndexMap* block_voxel_list);
 
 template <typename VoxelType>
-void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
+void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint max_depth, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
 
 
 

@@ -1,5 +1,4 @@
 #include <voxblox/utils/planning_utils.h>
-
 #include "voxblox/integrator/esdf_integrator.h"
 #include <iostream>
 namespace voxblox {
@@ -26,48 +25,52 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
   timing::Timer clear_timer("esdf/clear_radius");
 
 
-  // First set limit area list to occupied
-  HierarchicalIndexMap block_voxel_list_occ;
-  timing::Timer outer_sphere_timer("esdf/clear_radius/get_outer_sphere");
-  // utils::getAndAllocateSphereAroundPoint(position,
-  //                                        config_.occupied_sphere_radius,
-  //                                        esdf_layer_, &block_voxel_list_occ);
+  if (config_.limit_area && !config_.loaded_limit_area){
 
-  Eigen::MatrixXd limit_area(2, 3);
-  limit_area << config_.x_min,
-                config_.y_min, 
-                config_.z_min,
-                config_.x_max,
-                config_.y_max,
-                config_.z_max;
+    // First set limit area list to occupied
+    HierarchicalIndexMap block_voxel_list_occ;
+    timing::Timer outer_sphere_timer("esdf/clear_radius/get_outer_sphere");
+    // utils::getAndAllocateSphereAroundPoint(position,
+    //                                        config_.occupied_sphere_radius,
+    //                                        esdf_layer_, &block_voxel_list_occ);
 
+    Eigen::MatrixXd limit_area(2, 3);
+    limit_area << config_.x_min - config_.robot_radius,
+                  config_.y_min - config_.robot_radius, 
+                  config_.z_min - config_.robot_radius,
+                  config_.x_max + config_.robot_radius,
+                  config_.y_max + config_.robot_radius,
+                  config_.z_max + config_.robot_radius;
 
-  utils::getAndAllocateLimitAreaAroundPoint(position, pose, &limit_area,
-                                         esdf_layer_, &block_voxel_list_occ);
-  outer_sphere_timer.Stop();
-  for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list_occ) {
-    // Get block.
-    Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
+    utils::getAndAllocateLimitAreaAroundPoint(position, pose, &limit_area,
+                                           esdf_layer_, &block_voxel_list_occ);
+    
+    for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list_occ) {
+      // Get block.
+      Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
 
-    for (const VoxelIndex& voxel_index : kv.second) {
-      if (!block_ptr->isValidVoxelIndex(voxel_index)) {
-        continue;
-      }
-      EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
-      if (!esdf_voxel.observed) {
-        esdf_voxel.distance = -config_.default_distance_m;
-        esdf_voxel.observed = true;
-        esdf_voxel.hallucinated = false;
-        esdf_voxel.parent.setZero();
-        esdf_voxel.fixed = true;
-        esdf_voxel.boundary = true;
-        updated_blocks_.insert(kv.first);
-      } else if (!esdf_voxel.in_queue) {
-        GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
-            kv.first, voxel_index, voxels_per_side_);
-        open_.push(global_index, esdf_voxel.distance);
+      for (const VoxelIndex& voxel_index : kv.second) {
+        if (!block_ptr->isValidVoxelIndex(voxel_index)) {
+          continue;
+        }
+        EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
+        if (!esdf_voxel.observed) {
+          esdf_voxel.distance = -config_.default_distance_m;
+          esdf_voxel.observed = true;
+          esdf_voxel.hallucinated = false;
+          esdf_voxel.parent.setZero();
+          esdf_voxel.fixed = true;
+          esdf_voxel.boundary = true;
+          updated_blocks_.insert(kv.first);
+        } else if (!esdf_voxel.in_queue) {
+          GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
+              kv.first, voxel_index, voxels_per_side_);
+          open_.push(global_index, esdf_voxel.distance);
+        }
       }
     }
+    config_.loaded_limit_area = true;
+    outer_sphere_timer.Stop();
   }
 
 
@@ -75,9 +78,9 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
   HierarchicalIndexMap block_voxel_list;
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
 
-  // Create a clear area with the FOV shape
-  utils::getAndAllocateFOVAroundPoint(position, pose, config_.clear_sphere_radius, 
-                                      esdf_layer_, &block_voxel_list );
+  //Create a clear area with the FOV shape
+  //utils::getAndAllocateFOVAroundPoint(position, pose, config_.max_distance_m, 
+  //                                     esdf_layer_, &block_voxel_list );
   utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
                                         esdf_layer_, &block_voxel_list);
  
@@ -116,6 +119,7 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
       
     }
   }
+
 
 
 
@@ -204,7 +208,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
 
       const bool tsdf_fixed = isFixed(tsdf_voxel.distance);
       // If there was nothing there before:
-      if(!esdf_voxel.boundary){
+      if (!esdf_voxel.boundary){
         if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
           if (esdf_voxel.hallucinated) {
             raise_.push(global_index);

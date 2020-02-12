@@ -101,6 +101,8 @@ class EsdfServer : public TsdfServer {
   float traversability_radius_;
   bool incremental_update_;
   int num_subscribers_esdf_map_;
+  std::string input_filepath;
+  bool load_saved_map_;
 
   // ESDF maps.
   std::shared_ptr<EsdfMap> esdf_map_;

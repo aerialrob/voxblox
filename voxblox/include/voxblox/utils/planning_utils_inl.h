@@ -3,16 +3,16 @@
 
 #include <algorithm>
 
+#include <voxblox/integrator/integrator_utils.h>
 #include "voxblox/core/layer.h"
 #include "voxblox/core/voxel.h"
 #include "voxblox/utils/camera_model.h"
-#include <voxblox/integrator/integrator_utils.h>
 
+#include <kindr/minimal/quat-transformation.h>
 #include <mav_msgs/eigen_mav_msgs.h>
+#include <cmath>
 #include <iostream>
 #include "voxblox/core/common.h"
-#include <kindr/minimal/quat-transformation.h>
-#include <cmath>
 #include "voxblox/integrator/esdf_integrator.h"
 //#include <voxblox_planning_common/gain_evaluator.h>
 
@@ -70,9 +70,10 @@ void getAndAllocateSphereAroundPoint(const Point& center, FloatingPoint radius,
 }
 
 template <typename VoxelType>
-void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose,
-                          Eigen::MatrixXd* limit_area,
-                          HierarchicalIndexMap* block_voxel_list) {
+void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center,
+                             mav_msgs::EigenTrajectoryPoint pose,
+                             Eigen::MatrixXd* limit_area,
+                             HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(block_voxel_list);
   float voxel_size = layer.voxel_size();
   float voxel_size_inv = 1.0 / layer.voxel_size();
@@ -81,87 +82,88 @@ void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center,
   const GlobalIndex center_index =
       getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
 
-  Eigen::Vector2d x_lim(limit_area->coeffRef(0,0),limit_area->coeffRef(1,0));
-  Eigen::Vector2d y_lim(limit_area->coeffRef(0,1),limit_area->coeffRef(1,1));
-  Eigen::Vector2d z_lim(limit_area->coeffRef(0,2),limit_area->coeffRef(1,2));
+  Eigen::Vector2d x_lim(limit_area->coeffRef(0, 0), limit_area->coeffRef(1, 0));
+  Eigen::Vector2d y_lim(limit_area->coeffRef(0, 1), limit_area->coeffRef(1, 1));
+  Eigen::Vector2d z_lim(limit_area->coeffRef(0, 2), limit_area->coeffRef(1, 2));
 
-  Eigen::Vector2d x(pose.position_W.x(),pose.position_W.x());
-  Eigen::Vector2d y(pose.position_W.y(),pose.position_W.y());
-  Eigen::Vector2d z(pose.position_W.z(),pose.position_W.z());
+  Eigen::Vector2d x(pose.position_W.x(), pose.position_W.x());
+  Eigen::Vector2d y(pose.position_W.y(), pose.position_W.y());
+  Eigen::Vector2d z(pose.position_W.z(), pose.position_W.z());
 
   Eigen::MatrixXd rel_limit_area(2, 3);
-  rel_limit_area << (x_lim - x)/voxel_size,
-                (y_lim - y)/voxel_size, 
-                (z_lim - z)/voxel_size;
-  std::cout << "rel limit area \n" << rel_limit_area << "\n" ;
-  
+  rel_limit_area << (x_lim - x) / voxel_size, (y_lim - y) / voxel_size,
+      (z_lim - z) / voxel_size;
+  std::cout << "rel limit area \n" << rel_limit_area << "\n";
 
-
-// Draw walls in x 
-for (FloatingPoint x = 0; x < 2; x++) {
-  for (FloatingPoint y = rel_limit_area(0,1); y <= rel_limit_area(1,1); y++) {
-    for (FloatingPoint z = rel_limit_area(0,2); z <=rel_limit_area(1,2); z++) {
-      Point point_voxel_space(rel_limit_area(x,0), y, z);
-      GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
-                                         std::floor(point_voxel_space.y()),
-                                         std::floor(point_voxel_space.z()));
-      // Get the block and voxel indices from this.
-      BlockIndex block_index;
-      VoxelIndex voxel_index;
-      getBlockAndVoxelIndexFromGlobalVoxelIndex(
-          voxel_offset_index + center_index, voxels_per_side, &block_index,
-          &voxel_index);
-      (*block_voxel_list)[block_index].push_back(voxel_index);
+  // Draw walls in x
+  for (FloatingPoint x = 0; x < 2; x++) {
+    for (FloatingPoint y = rel_limit_area(0, 1); y <= rel_limit_area(1, 1);
+         y++) {
+      for (FloatingPoint z = rel_limit_area(0, 2); z <= rel_limit_area(1, 2);
+           z++) {
+        Point point_voxel_space(rel_limit_area(x, 0), y, z);
+        GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
+                                       std::floor(point_voxel_space.y()),
+                                       std::floor(point_voxel_space.z()));
+        // Get the block and voxel indices from this.
+        BlockIndex block_index;
+        VoxelIndex voxel_index;
+        getBlockAndVoxelIndexFromGlobalVoxelIndex(
+            voxel_offset_index + center_index, voxels_per_side, &block_index,
+            &voxel_index);
+        (*block_voxel_list)[block_index].push_back(voxel_index);
+      }
     }
   }
-}
 
-
-// Draw walls in y
-for (FloatingPoint y = 0; y < 2; y++) {
-  for (FloatingPoint x = rel_limit_area(0,0); x <= rel_limit_area(1,0); x++) {
-    for (FloatingPoint z = rel_limit_area(0,2); z <= rel_limit_area(1,2); z++) {
-      Point point_voxel_space(x, rel_limit_area(y,1), z);
-      GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
-                                         std::floor(point_voxel_space.y()),
-                                         std::floor(point_voxel_space.z()));
-      // Get the block and voxel indices from this.
-      BlockIndex block_index;
-      VoxelIndex voxel_index;
-      getBlockAndVoxelIndexFromGlobalVoxelIndex(
-          voxel_offset_index + center_index, voxels_per_side, &block_index,
-          &voxel_index);
-      (*block_voxel_list)[block_index].push_back(voxel_index);
+  // Draw walls in y
+  for (FloatingPoint y = 0; y < 2; y++) {
+    for (FloatingPoint x = rel_limit_area(0, 0); x <= rel_limit_area(1, 0);
+         x++) {
+      for (FloatingPoint z = rel_limit_area(0, 2); z <= rel_limit_area(1, 2);
+           z++) {
+        Point point_voxel_space(x, rel_limit_area(y, 1), z);
+        GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
+                                       std::floor(point_voxel_space.y()),
+                                       std::floor(point_voxel_space.z()));
+        // Get the block and voxel indices from this.
+        BlockIndex block_index;
+        VoxelIndex voxel_index;
+        getBlockAndVoxelIndexFromGlobalVoxelIndex(
+            voxel_offset_index + center_index, voxels_per_side, &block_index,
+            &voxel_index);
+        (*block_voxel_list)[block_index].push_back(voxel_index);
+      }
     }
   }
-}
 
-
-// Draw walls in z
-for (FloatingPoint z = 0; z < 2; z++) {
-  for (FloatingPoint x = rel_limit_area(0,0); x <= rel_limit_area(1,0); x++) {
-    for (FloatingPoint y = rel_limit_area(0,1); y <= rel_limit_area(1,1); y++) {
-      Point point_voxel_space(x, y, rel_limit_area(z,2));
-      GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
-                                         std::floor(point_voxel_space.y()),
-                                         std::floor(point_voxel_space.z()));
-      // Get the block and voxel indices from this.
-      BlockIndex block_index;
-      VoxelIndex voxel_index;
-      getBlockAndVoxelIndexFromGlobalVoxelIndex(
-          voxel_offset_index + center_index, voxels_per_side, &block_index,
-          &voxel_index);
-      (*block_voxel_list)[block_index].push_back(voxel_index);
+  // Draw walls in z
+  for (FloatingPoint z = 0; z < 2; z++) {
+    for (FloatingPoint x = rel_limit_area(0, 0); x <= rel_limit_area(1, 0);
+         x++) {
+      for (FloatingPoint y = rel_limit_area(0, 1); y <= rel_limit_area(1, 1);
+           y++) {
+        Point point_voxel_space(x, y, rel_limit_area(z, 2));
+        GlobalIndex voxel_offset_index(std::floor(point_voxel_space.x()),
+                                       std::floor(point_voxel_space.y()),
+                                       std::floor(point_voxel_space.z()));
+        // Get the block and voxel indices from this.
+        BlockIndex block_index;
+        VoxelIndex voxel_index;
+        getBlockAndVoxelIndexFromGlobalVoxelIndex(
+            voxel_offset_index + center_index, voxels_per_side, &block_index,
+            &voxel_index);
+        (*block_voxel_list)[block_index].push_back(voxel_index);
+      }
     }
   }
-}
-
 }
 
 template <typename VoxelType>
-void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose,
-                          FloatingPoint radius,
-                          HierarchicalIndexMap* block_voxel_list) {
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center,
+                       mav_msgs::EigenTrajectoryPoint pose,
+                       FloatingPoint max_depth,
+                       HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(block_voxel_list);
   float voxel_size = layer.voxel_size();
   float voxel_size_inv = 1.0 / layer.voxel_size();
@@ -170,29 +172,31 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
   const GlobalIndex center_index =
       getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
 
-  // Initialize camera 
+  // Initialize camera
   const double pi = std::acos(-1);
-  double horizontal_fov = (60 * pi)/180;
-  double vertical_fov = (49.5 * pi)/180;
-  double max_distance = 5;
-  const FloatingPoint max_distance_in_voxels = max_distance / voxel_size;
+  double horizontal_fov = (60 * pi) / 180;
+  double vertical_fov = (49.5 * pi) / 180;
+ 
+  const FloatingPoint max_distance_in_voxels = max_depth / voxel_size;
   double tan_half_horizontal_fov = tanf(horizontal_fov / 2.0);
   double tan_half_vertical_fov = tanf(vertical_fov / 2.0);
- 
- for (FloatingPoint x = 0; x <= max_distance_in_voxels; x++) {
-      // Create the y and z bound as a function of the range x 
-      float ybound = (x*voxel_size * tan_half_horizontal_fov)/voxel_size;
-      float zbound = (x*voxel_size * tan_half_vertical_fov)/voxel_size;
-   
-    for (FloatingPoint y = -ybound ; y <= ybound; y++) {
-      for (FloatingPoint z = -zbound; z <= zbound; z++) {
-          Point point_voxel_space(x, y, z);
-          Eigen::Vector3d position{x,y,z};
 
-          // Rotate position of voxels using the orientation of the odometry
-          Eigen::Vector3d position_rot = pose.orientation_W_B.toRotationMatrix() * position;
-          Point point_voxel_space_rot(position_rot[0], position_rot[1],position_rot[2]);
-         // check if point is inside the spheres radius
+  for (FloatingPoint x = 0; x <= max_distance_in_voxels; x++) {
+    // Create the y and z bound as a function of the range x
+    float ybound = (x * voxel_size * tan_half_horizontal_fov) / voxel_size;
+    float zbound = (x * voxel_size * tan_half_vertical_fov) / voxel_size;
+
+    for (FloatingPoint y = -ybound; y <= ybound; y++) {
+      for (FloatingPoint z = -zbound; z <= zbound; z++) {
+        Point point_voxel_space(x, y, z);
+        Eigen::Vector3d position{x, y, z};
+
+        // Rotate position of voxels using the orientation of the odometry
+        Eigen::Vector3d position_rot =
+            pose.orientation_W_B.toRotationMatrix() * position;
+        Point point_voxel_space_rot(position_rot[0], position_rot[1],
+                                    position_rot[2]);
+        // check if point is inside the spheres radius
         if (point_voxel_space_rot.norm() <= max_distance_in_voxels) {
           GlobalIndex voxel_offset_index(std::floor(point_voxel_space_rot.x()),
                                          std::floor(point_voxel_space_rot.y()),
@@ -204,24 +208,21 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
           getBlockAndVoxelIndexFromGlobalVoxelIndex(
               voxel_offset_index + center_index, voxels_per_side, &block_index,
               &voxel_index);
-              (*block_voxel_list)[block_index].push_back(voxel_index);
-
-          
-        }
-
+          (*block_voxel_list)[block_index].push_back(voxel_index);
         }
       }
-
+    }
   }
 }
 
 template <typename VoxelType>
-void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius,
-                                     Layer<VoxelType>* layer,
-                                     HierarchicalIndexMap* block_voxel_list) {
+void getAndAllocateFOVAroundPoint(const Point& center,
+                                  mav_msgs::EigenTrajectoryPoint pose,
+                                  FloatingPoint max_depth, Layer<VoxelType>* layer,
+                                  HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(layer);
   CHECK_NOTNULL(block_voxel_list);
-  getFOVAroundPoint(*layer, center, pose, radius, block_voxel_list);
+  getFOVAroundPoint(*layer, center, pose, max_depth, block_voxel_list);
   for (auto it = block_voxel_list->begin(); it != block_voxel_list->end();
        ++it) {
     layer->allocateBlockPtrByIndex(it->first);
@@ -229,9 +230,10 @@ void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectory
 }
 
 template <typename VoxelType>
-void getAndAllocateLimitAreaAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, Eigen::MatrixXd* limit_area,
-                                     Layer<VoxelType>* layer,
-                                     HierarchicalIndexMap* block_voxel_list) {
+void getAndAllocateLimitAreaAroundPoint(
+    const Point& center, mav_msgs::EigenTrajectoryPoint pose,
+    Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer,
+    HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(layer);
   CHECK_NOTNULL(block_voxel_list);
   getLimitAreaAroundPoint(*layer, center, pose, limit_area, block_voxel_list);
@@ -240,10 +242,6 @@ void getAndAllocateLimitAreaAroundPoint(const Point& center, mav_msgs::EigenTraj
     layer->allocateBlockPtrByIndex(it->first);
   }
 }
-
-
-
-
 
 // This function sets all voxels within a Euclidean distance of the center
 // to a value equal to the distance of the point from the center, essentially
