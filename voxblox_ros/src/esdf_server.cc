@@ -255,31 +255,13 @@ void EsdfServer::setTraversabilityRadius(float traversability_radius) {
 
 void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   if (clear_sphere_for_planning_) {
-    mav_msgs::EigenTrajectoryPoint pose;
-
-    // Get the transform from world to odometry sensor
-    // tf::TransformListener listener;
-    // tf::StampedTransform transform_orig;
-    // tf::Transform transform;
-    // listener.waitForTransform("world", "t265_link", ros::Time::now(),
-    // ros::Duration(0.5)); listener.lookupTransform("world", "t265_link",
-    // ros::Time::now(), transform_orig); std::string dest_tf = "world";
-    // std::string orig_tf = "t265_link";
-    // voxblox::Transformation transform_orig;
-    // if (transformer_.lookupTransform(dest_tf, orig_tf, ros::Time::now(),
-    // &transform_orig)){
-
-    Eigen::Vector3d point{T_G_C.getPosition().x(), T_G_C.getPosition().y(),
-                          T_G_C.getPosition().z()};
-    pose.position_W = point;
     Eigen::Quaterniond quat{T_G_C.getRotation().w(), T_G_C.getRotation().x(),
                             T_G_C.getRotation().y(), T_G_C.getRotation().z()};
-    pose.orientation_W_B = quat;
-    // Point position{float(T_G_C.getPosition()[0]),
-    // float(T_G_C.getPosition()[1]),float(T_G_C.getPosition()[2])};
-    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), pose);
-
-    //}
+    // Transform it to camera_link ref. frame. Now, it is in
+    // /camera_depth_optical_frame
+    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
+    Eigen::Quaterniond quat_mult = quat_rot1 * quat;
+    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");
@@ -298,7 +280,7 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
     ROS_ERROR_THROTTLE(10, "Got an invalid ESDF map message!");
   } else {
     ROS_INFO_ONCE("Got an ESDF map from ROS topic!");
-    //publishPointclouds();
+    // publishPointclouds();
   }
 }
 

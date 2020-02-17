@@ -70,8 +70,7 @@ void getAndAllocateSphereAroundPoint(const Point& center, FloatingPoint radius,
 }
 
 template <typename VoxelType>
-void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center,
-                             mav_msgs::EigenTrajectoryPoint pose,
+void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& position,
                              Eigen::MatrixXd* limit_area,
                              HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(block_voxel_list);
@@ -80,15 +79,15 @@ void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center,
   int voxels_per_side = layer.voxels_per_side();
 
   const GlobalIndex center_index =
-      getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
+      getGridIndexFromPoint<GlobalIndex>(position, voxel_size_inv);
 
   Eigen::Vector2d x_lim(limit_area->coeffRef(0, 0), limit_area->coeffRef(1, 0));
   Eigen::Vector2d y_lim(limit_area->coeffRef(0, 1), limit_area->coeffRef(1, 1));
   Eigen::Vector2d z_lim(limit_area->coeffRef(0, 2), limit_area->coeffRef(1, 2));
 
-  Eigen::Vector2d x(pose.position_W.x(), pose.position_W.x());
-  Eigen::Vector2d y(pose.position_W.y(), pose.position_W.y());
-  Eigen::Vector2d z(pose.position_W.z(), pose.position_W.z());
+  Eigen::Vector2d x(position.x(), position.x());
+  Eigen::Vector2d y(position.y(), position.y());
+  Eigen::Vector2d z(position.z(), position.z());
 
   Eigen::MatrixXd rel_limit_area(2, 3);
   rel_limit_area << (x_lim - x) / voxel_size, (y_lim - y) / voxel_size,
@@ -160,8 +159,8 @@ void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center,
 }
 
 template <typename VoxelType>
-void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center,
-                       mav_msgs::EigenTrajectoryPoint pose,
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& position,
+                       Eigen::Quaterniond rotation,
                        FloatingPoint max_depth,
                        HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(block_voxel_list);
@@ -170,13 +169,13 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center,
   int voxels_per_side = layer.voxels_per_side();
 
   const GlobalIndex center_index =
-      getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
+      getGridIndexFromPoint<GlobalIndex>(position, voxel_size_inv);
 
   // Initialize camera
   const double pi = std::acos(-1);
-  double horizontal_fov = (60 * pi) / 180;
-  double vertical_fov = (49.5 * pi) / 180;
- 
+  double horizontal_fov = (49.5 * pi) / 180;
+  double vertical_fov = (60 * pi) / 180;
+
   const FloatingPoint max_distance_in_voxels = max_depth / voxel_size;
   double tan_half_horizontal_fov = tanf(horizontal_fov / 2.0);
   double tan_half_vertical_fov = tanf(vertical_fov / 2.0);
@@ -193,7 +192,7 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center,
 
         // Rotate position of voxels using the orientation of the odometry
         Eigen::Vector3d position_rot =
-            pose.orientation_W_B.toRotationMatrix() * position;
+            rotation.toRotationMatrix() * position;
         Point point_voxel_space_rot(position_rot[0], position_rot[1],
                                     position_rot[2]);
         // check if point is inside the spheres radius
@@ -216,13 +215,14 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center,
 }
 
 template <typename VoxelType>
-void getAndAllocateFOVAroundPoint(const Point& center,
-                                  mav_msgs::EigenTrajectoryPoint pose,
-                                  FloatingPoint max_depth, Layer<VoxelType>* layer,
+void getAndAllocateFOVAroundPoint(const Point& position,
+                                  Eigen::Quaterniond rotation,
+                                  FloatingPoint max_depth,
+                                  Layer<VoxelType>* layer,
                                   HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(layer);
   CHECK_NOTNULL(block_voxel_list);
-  getFOVAroundPoint(*layer, center, pose, max_depth, block_voxel_list);
+  getFOVAroundPoint(*layer, position, rotation, max_depth, block_voxel_list);
   for (auto it = block_voxel_list->begin(); it != block_voxel_list->end();
        ++it) {
     layer->allocateBlockPtrByIndex(it->first);
@@ -231,12 +231,11 @@ void getAndAllocateFOVAroundPoint(const Point& center,
 
 template <typename VoxelType>
 void getAndAllocateLimitAreaAroundPoint(
-    const Point& center, mav_msgs::EigenTrajectoryPoint pose,
-    Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer,
+    const Point& position, Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer,
     HierarchicalIndexMap* block_voxel_list) {
   CHECK_NOTNULL(layer);
   CHECK_NOTNULL(block_voxel_list);
-  getLimitAreaAroundPoint(*layer, center, pose, limit_area, block_voxel_list);
+  getLimitAreaAroundPoint(*layer, position, limit_area, block_voxel_list);
   for (auto it = block_voxel_list->begin(); it != block_voxel_list->end();
        ++it) {
     layer->allocateBlockPtrByIndex(it->first);

@@ -89,6 +89,7 @@ class EsdfIntegrator {
 
     bool limit_area = false;
     bool loaded_limit_area = false;
+    bool clear_fov = false;
 
     FloatingPoint robot_radius = 0.5;
   };
@@ -103,7 +104,7 @@ class EsdfIntegrator {
    * be cleared based on this.
    */
   void addNewRobotPosition(const Point& position,
-                           mav_msgs::EigenTrajectoryPoint pose);
+                           Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the
