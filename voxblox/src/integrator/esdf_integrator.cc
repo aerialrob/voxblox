@@ -1,6 +1,5 @@
-#include <voxblox/utils/planning_utils.h>
-
 #include "voxblox/integrator/esdf_integrator.h"
+#include <voxblox/utils/planning_utils.h>
 #include <iostream>
 namespace voxblox {
 
@@ -22,31 +21,29 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 
 // Used for planning - allocates sphere around as observed but occupied,
 // and clears space in a sphere around current position.
-void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenTrajectoryPoint pose) {
-  timing::Timer clear_timer("esdf/clear_radius");
+void EsdfIntegrator::addNewRobotPosition(const Point& position,
+                                         Eigen::Quaterniond rotation) {
+  if (config_.limit_area && !config_.loaded_limit_area) {
+    // First set limit area list to occupied
+    HierarchicalIndexMap block_voxel_list_occ;
+    timing::Timer limit_area_timer("esdf/limit_area");
 
-  // First set limit area list to occupied
-  HierarchicalIndexMap block_voxel_list_occ;
-  timing::Timer outer_sphere_timer("esdf/clear_radius/get_outer_sphere");
-  // utils::getAndAllocateSphereAroundPoint(position,
-  //                                        config_.occupied_sphere_radius,
-  //                                        esdf_layer_, &block_voxel_list_occ);
+    Eigen::MatrixXd limit_area(2, 3);
+    limit_area << config_.x_min - config_.robot_radius,
+        config_.y_min,
+        config_.z_min,
+        config_.x_max,
+        config_.y_max,
+        config_.z_max;
 
-  Eigen::MatrixXd limit_area(2, 3);
-  limit_area << config_.x_min,
-                config_.y_min, 
-                config_.z_min,
-                config_.x_max,
-                config_.y_max,
-                config_.z_max;
+    utils::getAndAllocateLimitAreaAroundPoint(
+        position, &limit_area, esdf_layer_, &block_voxel_list_occ);
 
-  if (config_.limit_area){
-    utils::getAndAllocateLimitAreaAroundPoint(position, pose, &limit_area,
-                                           esdf_layer_, &block_voxel_list_occ);
-    outer_sphere_timer.Stop();
-    for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list_occ) {
+    for (const std::pair<BlockIndex, VoxelIndexList>& kv :
+         block_voxel_list_occ) {
       // Get block.
-      Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
+      Block<EsdfVoxel>::Ptr block_ptr =
+          esdf_layer_->getBlockPtrByIndex(kv.first);
 
       for (const VoxelIndex& voxel_index : kv.second) {
         if (!block_ptr->isValidVoxelIndex(voxel_index)) {
@@ -68,49 +65,46 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
         }
       }
     }
+    config_.loaded_limit_area = true;
+    limit_area_timer.Stop();
   }
-
 
   // Second set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
-  timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
-
+  timing::Timer clear_timer("esdf/clear_radius_and_fov");
   // Create a clear area with the FOV shape
-  utils::getAndAllocateFOVAroundPoint(position, pose, config_.clear_sphere_radius, 
-                                      esdf_layer_, &block_voxel_list );
+  if (config_.clear_fov) {
+    utils::getAndAllocateFOVAroundPoint(position, rotation,
+                                        config_.max_distance_m, esdf_layer_,
+                                        &block_voxel_list);
+  }
+
   utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
-                                        esdf_layer_, &block_voxel_list);
-  sphere_timer.Stop();
- 
+                                         esdf_layer_, &block_voxel_list);
+
   for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list) {
     // Get block.
     Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
-
 
     for (const VoxelIndex& voxel_index : kv.second) {
       if (!block_ptr->isValidVoxelIndex(voxel_index)) {
         continue;
       }
-
       EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
 
       if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
-
-         if (esdf_voxel.hallucinated) {
+        if (esdf_voxel.hallucinated) {
           GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
               kv.first, voxel_index, voxels_per_side_);
           raise_.push(global_index);
-         
         }
 
-          esdf_voxel.distance = config_.default_distance_m;
-          esdf_voxel.observed = true;
-          esdf_voxel.hallucinated = true;
-          esdf_voxel.parent.setZero();
-          updated_blocks_.insert(kv.first);
-
+        esdf_voxel.distance = config_.default_distance_m;
+        esdf_voxel.observed = true;
+        esdf_voxel.hallucinated = true;
+        esdf_voxel.parent.setZero();
+        updated_blocks_.insert(kv.first);
       }
-      
     }
   }
 
@@ -199,7 +193,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
 
       const bool tsdf_fixed = isFixed(tsdf_voxel.distance);
       // If there was nothing there before:
-      if (!esdf_voxel.boundary){
+      if (!esdf_voxel.boundary) {
         if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
           if (esdf_voxel.hallucinated) {
             raise_.push(global_index);
@@ -216,7 +210,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
             esdf_voxel.distance =
                 signum(tsdf_voxel.distance) * (config_.default_distance_m);
             esdf_voxel.fixed = false;
-  
+
             if (incremental) {
               if (updateVoxelFromNeighbors(global_index)) {
                 esdf_voxel.in_queue = true;
@@ -231,12 +225,11 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
           // If this voxel DID exist before.
           // There are three main options:
           // (1a) unfix: if was fixed before but not anymore, raise.
-          // (1) lower: esdf or tsdf is fixed, and tsdf is closer to surface than
-          // it used to be.
-          // (2) raise: esdf or tsdf is fixed, and tsdf is further from surface
-          // than it used to be.
-          // (3) sign flip: tsdf and esdf have different signs, otherwise the
-          // lower and raise rules apply as above.
+          // (1) lower: esdf or tsdf is fixed, and tsdf is closer to surface
+          // than it used to be. (2) raise: esdf or tsdf is fixed, and tsdf is
+          // further from surface than it used to be. (3) sign flip: tsdf and
+          // esdf have different signs, otherwise the lower and raise rules
+          // apply as above.
           if (tsdf_fixed || esdf_voxel.fixed) {
             if (!tsdf_fixed) {
               // New case: have to raise the voxel
@@ -286,7 +279,8 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
               open_.push(global_index, esdf_voxel.distance);
               num_raise++;
             }
-          } else if (signum(tsdf_voxel.distance) != signum(esdf_voxel.distance)) {
+          } else if (signum(tsdf_voxel.distance) !=
+                     signum(esdf_voxel.distance)) {
             // This means ESDF was positive and TSDF is negative.
             // So lower.
             if (tsdf_voxel.distance < esdf_voxel.distance) {
@@ -306,8 +300,8 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
               num_raise++;
             }
           }
-        // Otherwise we just don't care. Not fixed voxels that match the right
-        // sign can be whatever value that they want to be.
+          // Otherwise we just don't care. Not fixed voxels that match the right
+          // sign can be whatever value that they want to be.
         }
       }
       esdf_voxel.observed = true;

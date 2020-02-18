@@ -9,8 +9,6 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
-
-
 namespace voxblox {
 
 EsdfServer::EsdfServer(const ros::NodeHandle& nh,
@@ -84,6 +82,32 @@ void EsdfServer::setupRos() {
         nh_private_.createTimer(ros::Duration(update_esdf_every_n_sec),
                                 &EsdfServer::updateEsdfEvent, this);
   }
+
+  timing::Timer load_saved_map("load_saved_map");
+  tsdf_map_ = TsdfServer::getTsdfMapPtr();
+  CHECK(tsdf_map_);
+
+  nh_private_.param("voxblox_path", input_filepath, input_filepath);
+  nh_private_.param("load_saved_map", load_saved_map_, load_saved_map_);
+  if (load_saved_map_) {
+    if (!input_filepath.empty()) {
+      // Verify that the map has an ESDF layer, otherwise generate it.
+      if (!TsdfServer::loadMap(input_filepath)) {
+        ROS_ERROR("Couldn't load ESDF map!");
+        std::cout << "Input filepath> " << input_filepath;
+        // Check if the TSDF layer is non-empty...
+        if (tsdf_map_->getTsdfLayerPtr()->getNumberOfAllocatedBlocks() > 0) {
+          ROS_INFO("Generating ESDF layer from TSDF.");
+          // If so, generate the ESDF layer!
+          const bool full_euclidean_distance = true;
+          updateEsdfBatch(full_euclidean_distance);
+        } else {
+          ROS_ERROR("TSDF map also empty! Check voxel size!");
+        }
+      }
+    }
+  }
+  load_saved_map.Stop();
 }
 
 void EsdfServer::publishAllUpdatedEsdfVoxels() {
@@ -129,6 +153,7 @@ void EsdfServer::updateEsdfEvent(const ros::TimerEvent& /*event*/) {
 }
 
 void EsdfServer::publishPointclouds() {
+  timing::Timer publish_pointclouds_timer("pointclouds/publish");
   publishAllUpdatedEsdfVoxels();
   if (publish_slices_) {
     publishSlices();
@@ -139,6 +164,7 @@ void EsdfServer::publishPointclouds() {
   }
 
   TsdfServer::publishPointclouds();
+  publish_pointclouds_timer.Stop();
 }
 
 void EsdfServer::publishTraversable() {
@@ -229,30 +255,13 @@ void EsdfServer::setTraversabilityRadius(float traversability_radius) {
 
 void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   if (clear_sphere_for_planning_) {
-    mav_msgs::EigenTrajectoryPoint pose;
-    
-    //Eigen::Vector3d point{T_G_C.getPosition().x(), T_G_C.getPosition().y(), T_G_C.getPosition().z()};
-    //pose.position_W = point;
-
-    //Eigen::Quaternion<float> q = T_G_C.getEigenQuaternion();
-    //Eigen::Quaterniond quat{q.w(), q.x(), q.y(), q.z()};
-    //pose.orientation_W_B = quat;
-    //ROS_ERROR("[ESDF SERVER] Pose %f, %f, %f", pose.position_W.x() ,pose.position_W.y() ,pose.position_W.z()) ;
-    //ROS_ERROR("[ESDF SERVER] Orientation %f, %f, %f, %f",pose.orientation_W_B.w() , pose.orientation_W_B.x() ,pose.orientation_W_B.y() ,pose.orientation_W_B.z()) ;
-    
-    // Get the transform from world to odometry sensor
-    tf::TransformListener listener;
-    tf::StampedTransform transform_orig;
-    tf::Transform transform;
-    listener.waitForTransform("beacon_map", "robot_base", ros::Time::now(), ros::Duration(1.0));
-    listener.lookupTransform("beacon_map", "robot_base", ros::Time(0), transform_orig);
-    Eigen::Vector3d point{transform_orig.getOrigin().x(), transform_orig.getOrigin().y(), transform_orig.getOrigin().z()};
-    pose.position_W = point;
-    Eigen::Quaterniond quat{transform_orig.getRotation().w(), transform_orig.getRotation().x(), transform_orig.getRotation().y(),transform_orig.getRotation().z()};
-    pose.orientation_W_B = quat; 
-    Point position{float(transform_orig.getOrigin()[0]), float(transform_orig.getOrigin()[1]),float(transform_orig.getOrigin()[2])};
-
-    esdf_integrator_->addNewRobotPosition(position, pose);
+    Eigen::Quaterniond quat{T_G_C.getRotation().w(), T_G_C.getRotation().x(),
+                            T_G_C.getRotation().y(), T_G_C.getRotation().z()};
+    // Transform it to camera_link ref. frame. Now, it is in
+    // /camera_depth_optical_frame
+    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
+    Eigen::Quaterniond quat_mult = quat_rot1 * quat;
+    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");
@@ -271,7 +280,7 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
     ROS_ERROR_THROTTLE(10, "Got an invalid ESDF map message!");
   } else {
     ROS_INFO_ONCE("Got an ESDF map from ROS topic!");
-    publishPointclouds();
+    // publishPointclouds();
   }
 }
 

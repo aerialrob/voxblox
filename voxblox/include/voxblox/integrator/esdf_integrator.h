@@ -76,7 +76,6 @@ class EsdfIntegrator {
     FloatingPoint clear_sphere_radius = 1.5;
     FloatingPoint occupied_sphere_radius = 5.0;
 
-
     /**
      * Limits in x, y and z to contruct a service area
      */
@@ -89,8 +88,10 @@ class EsdfIntegrator {
     double z_max = 2;
 
     bool limit_area = false;
+    bool loaded_limit_area = false;
+    bool clear_fov = false;
 
-  FloatingPoint robot_radius = 0.5;
+    FloatingPoint robot_radius = 0.5;
   };
 
   EsdfIntegrator(const Config& config, Layer<TsdfVoxel>* tsdf_layer,
@@ -102,7 +103,8 @@ class EsdfIntegrator {
    * Points added this way are marked as "hallucinated," and can subsequently
    * be cleared based on this.
    */
-  void addNewRobotPosition(const Point& position, mav_msgs::EigenTrajectoryPoint pose);
+  void addNewRobotPosition(const Point& position,
+                           Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the

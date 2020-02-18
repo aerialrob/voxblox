@@ -165,6 +165,8 @@ void TsdfServer::getServerConfigFromRosParam(
                    publish_pointclouds_on_update_,
                    publish_pointclouds_on_update_);
   nh_private.param("publish_slices", publish_slices_, publish_slices_);
+  nh_private.param("publish_occupied_nodes", publish_occupied_nodes_,
+                   publish_occupied_nodes_);
   nh_private.param("publish_pointclouds", publish_pointclouds_,
                    publish_pointclouds_);
 
@@ -208,11 +210,9 @@ void TsdfServer::getServerConfigFromRosParam(
   }
   color_map_->setMaxValue(intensity_max_value);
 
-  nh_private.param("max_distance_pointcloud",
-                    max_distance_pointcloud_,
-                    max_distance_pointcloud_);
+  nh_private.param("max_depth_pointcloud", max_depth_pointcloud_,
+                   max_depth_pointcloud_);
 }
-
 
 void TsdfServer::processPointCloudMessageAndInsert(
     const sensor_msgs::PointCloud2::Ptr& pointcloud_msg,
@@ -240,17 +240,20 @@ void TsdfServer::processPointCloudMessageAndInsert(
     pcl::PointCloud<pcl::PointXYZRGB> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors,
+                      max_depth_pointcloud_);
   } else if (has_intensity) {
     pcl::PointCloud<pcl::PointXYZI> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors,
+                      max_depth_pointcloud_);
   } else {
     pcl::PointCloud<pcl::PointXYZ> pointcloud_pcl;
     // pointcloud_pcl is modified below:
     pcl::fromROSMsg(*pointcloud_msg, pointcloud_pcl);
-    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors, max_distance_pointcloud_);
+    convertPointcloud(pointcloud_pcl, color_map_, &points_C, &colors,
+                      max_depth_pointcloud_);
   }
   ptcloud_timer.Stop();
 
@@ -487,8 +490,8 @@ void TsdfServer::publishPointclouds() {
   // Combined function to publish all possible pointcloud messages -- surface
   // pointclouds, updated points, and occupied points.
   publishAllUpdatedTsdfVoxels();
-  publishTsdfSurfacePoints();
-  publishTsdfOccupiedNodes();
+  // publishTsdfSurfacePoints();
+  // publishTsdfOccupiedNodes();
   if (publish_slices_) {
     publishSlices();
   }
@@ -517,6 +520,15 @@ void TsdfServer::updateMesh() {
   }
 
   publish_mesh_timer.Stop();
+  if (publish_slices_) {
+    publishAllUpdatedTsdfVoxels();
+    publishSlices();
+  }
+
+  if (publish_occupied_nodes_) {
+    publishAllUpdatedTsdfVoxels();
+    publishTsdfOccupiedNodes();
+  }
 
   if (publish_pointclouds_ && !publish_pointclouds_on_update_) {
     publishPointclouds();

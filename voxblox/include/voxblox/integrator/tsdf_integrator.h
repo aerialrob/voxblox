@@ -57,7 +57,7 @@ class TsdfIntegratorBase {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     float default_truncation_distance = 0.1;
-    float max_weight = 10000.0;
+    float max_weight = 20000.0;
     bool voxel_carving_enabled = true;
     FloatingPoint min_ray_length_m = 0.1;
     FloatingPoint max_ray_length_m = 5.0;
@@ -85,6 +85,9 @@ class TsdfIntegratorBase {
     /// fast integrator specific
     float max_integration_time_s = std::numeric_limits<float>::max();
 
+    // parameter that selects a different weighting formula in the
+    // tsdf_integrator
+    bool mobile_obstacle_detection = false;
     std::string print() const;
   };
 
@@ -110,7 +113,7 @@ class TsdfIntegratorBase {
  protected:
   /// Thread safe.
   inline bool isPointValid(const Point& point_C, const bool freespace_point,
-                    bool* is_clearing) const {
+                           bool* is_clearing) const {
     DCHECK(is_clearing != nullptr);
     const FloatingPoint ray_distance = point_C.norm();
     if (ray_distance < config_.min_ray_length_m) {

@@ -127,20 +127,21 @@ template <typename PCLPoint>
 inline void convertPointcloud(
     const typename pcl::PointCloud<PCLPoint>& pointcloud_pcl,
     const std::shared_ptr<ColorMap>& color_map, Pointcloud* points_C,
-    Colors* colors, double max_distance_pointcloud_) {
+    Colors* colors, double max_depth_pointcloud_) {
   points_C->reserve(pointcloud_pcl.size());
   colors->reserve(pointcloud_pcl.size());
   for (size_t i = 0; i < pointcloud_pcl.points.size(); ++i) {
     if (!isPointFinite(pointcloud_pcl.points[i])) {
       continue;
     }
-    if(pointcloud_pcl.points[i].z > max_distance_pointcloud_){ continue;}
-    else{
-    points_C->push_back(Point(pointcloud_pcl.points[i].x,
-                              pointcloud_pcl.points[i].y,
-                              pointcloud_pcl.points[i].z));
-    colors->emplace_back(
-        convertColor<PCLPoint>(pointcloud_pcl.points[i], color_map));
+    if (pointcloud_pcl.points[i].z > max_depth_pointcloud_) {
+      continue;
+    } else {
+      points_C->push_back(Point(pointcloud_pcl.points[i].x,
+                                pointcloud_pcl.points[i].y,
+                                pointcloud_pcl.points[i].z));
+      colors->emplace_back(
+          convertColor<PCLPoint>(pointcloud_pcl.points[i], color_map));
     }
   }
 }
