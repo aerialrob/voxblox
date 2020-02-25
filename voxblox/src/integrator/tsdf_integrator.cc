@@ -93,6 +93,7 @@ TsdfVoxel* TsdfIntegratorBase::allocateStorageAndGetVoxelPtr(
   DCHECK(last_block != nullptr);
   DCHECK(last_block_idx != nullptr);
 
+  layer_->removeAllBlocks();
   const BlockIndex block_idx =
       getBlockIndexFromGlobalVoxelIndex(global_voxel_idx, voxels_per_side_inv_);
 
