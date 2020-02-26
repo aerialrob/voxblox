@@ -85,6 +85,9 @@ class TsdfIntegratorBase {
     /// fast integrator specific
     float max_integration_time_s = std::numeric_limits<float>::max();
 
+    int decay_counter = 0;
+    int decay_time = 10;
+    bool mobile_obstacle_detection = false;
     std::string print() const;
   };
 

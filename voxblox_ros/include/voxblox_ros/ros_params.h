@@ -107,7 +107,11 @@ inline TsdfIntegratorBase::Config getTsdfIntegratorConfigFromRosParam(
   nh_private.param("integration_order_mode",
                    integrator_config.integration_order_mode,
                    integrator_config.integration_order_mode);
-
+  nh_private.param("mobile_obstacle_detection",
+                   integrator_config.mobile_obstacle_detection,
+                   integrator_config.mobile_obstacle_detection);
+  nh_private.param("decay_time", integrator_config.decay_time,
+                   integrator_config.decay_time);
   integrator_config.default_truncation_distance =
       static_cast<float>(truncation_distance);
   integrator_config.max_weight = static_cast<float>(max_weight);
@@ -159,8 +163,7 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
                    esdf_integrator_config.add_occupied_crust);
   nh_private.param("robot_radius", esdf_integrator_config.robot_radius,
                    esdf_integrator_config.robot_radius);
-  nh_private.param("clear_fov",
-                   esdf_integrator_config.clear_fov,
+  nh_private.param("clear_fov", esdf_integrator_config.clear_fov,
                    esdf_integrator_config.clear_fov);
   nh_private.getParam("x_min", esdf_integrator_config.x_min);
   nh_private.getParam("y_min", esdf_integrator_config.y_min);

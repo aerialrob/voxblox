@@ -23,6 +23,7 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 // and clears space in a sphere around current position.
 void EsdfIntegrator::addNewRobotPosition(const Point& position,
                                          Eigen::Quaterniond rotation) {
+  esdf_layer_->removeAllBlocks();
   if (config_.limit_area && !config_.loaded_limit_area) {
     // First set limit area list to occupied
     HierarchicalIndexMap block_voxel_list_occ;
