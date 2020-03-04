@@ -193,15 +193,15 @@ void TsdfIntegratorBase::updateTsdfVoxel(const Point& origin,
   }
 
   float new_sdf;
-  if (config_.mobile_obstacle_detection) {
-    new_sdf = (sdf * tsdf_voxel->weight +
-               (tsdf_voxel->distance * tsdf_voxel->weight)) /
-              new_weight;
-  } else {
+  // if (config_.mobile_obstacle_detection) {
+  //   new_sdf = (sdf * tsdf_voxel->weight +
+  //              (tsdf_voxel->distance * tsdf_voxel->weight)) /
+  //             new_weight;
+  // } else {
     new_sdf = (sdf * updated_weight +
                (tsdf_voxel->distance * tsdf_voxel->weight)) /
               new_weight;
-  }
+  //}
 
   // std::cout << "New_sdf:" << new_sdf << " sdf " << sdf << "  update_weight"
   // << updated_weight << "   tsdf distance" << tsdf_voxel->distance << " tsdf
@@ -334,10 +334,10 @@ void MergedTsdfIntegrator::integratePointCloud(const Transformation& T_G_C,
   bundleRays(T_G_C, points_C, freespace_points, index_getter.get(), &voxel_map,
              &clear_map);
 
-  //if ((config_.decay_counter % config_.decay_time == 0)) {
+  if (config_.mobile_obstacle_detection){//((config_.decay_counter % config_.decay_time == 0)) {
    config_.decay_counter = 0;
    layer_->removeAllBlocks();
-  //}
+  }
   config_.decay_counter++;
 
   integrateRays(T_G_C, points_C, colors, config_.enable_anti_grazing, false,

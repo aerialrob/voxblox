@@ -173,7 +173,11 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
   nh_private.getParam("z_max", esdf_integrator_config.z_max);
   nh_private.param("limit_area", esdf_integrator_config.limit_area,
                    esdf_integrator_config.limit_area);
-
+  nh_private.param("mobile_obstacle_detection",
+                   esdf_integrator_config.mobile_obstacle_detection,
+                   esdf_integrator_config.mobile_obstacle_detection);
+  nh_private.param("decay_time", esdf_integrator_config.decay_time,
+                   esdf_integrator_config.decay_time);
   if (esdf_integrator_config.default_distance_m <
       esdf_integrator_config.max_distance_m) {
     esdf_integrator_config.default_distance_m =

@@ -44,6 +44,9 @@ class EsdfServer : public TsdfServer {
   /// considering only the newly updated parts of the TSDF map (checked with
   /// the ESDF updated bit in Update::Status).
   void updateEsdf();
+
+  // Update the global esdf layer
+  void updateGlobalEsdf(); 
   /// Update the ESDF all at once; clear the existing map.
   void updateEsdfBatch(bool full_euclidean = false);
 
@@ -80,6 +83,7 @@ class EsdfServer : public TsdfServer {
 
   /// Publish markers for visualization.
   ros::Publisher esdf_pointcloud_pub_;
+   ros::Publisher esdf_pointcloud_local_pub_;
   ros::Publisher esdf_slice_pub_;
   ros::Publisher traversable_pub_;
 
@@ -103,9 +107,11 @@ class EsdfServer : public TsdfServer {
   int num_subscribers_esdf_map_;
   std::string input_filepath;
   bool load_saved_map_;
+  bool publish_global_info_;
 
   // ESDF maps.
   std::shared_ptr<EsdfMap> esdf_map_;
+  std::shared_ptr<EsdfMap> esdf_global_map_;
   std::unique_ptr<EsdfIntegrator> esdf_integrator_;
 };
 

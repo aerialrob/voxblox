@@ -12,7 +12,6 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
   src/esdf_server.cc
   src/interactive_slider.cc
-  src/simulation_server.cc
   src/intensity_server.cc
   src/transformer.cc
   src/tsdf_server.cc
@@ -42,10 +41,6 @@ cs_add_executable(intensity_server
 )
 target_link_libraries(intensity_server ${PROJECT_NAME})
 
-cs_add_executable(simulation_eval
-  src/simulation_eval.cc
-)
-target_link_libraries(simulation_eval ${PROJECT_NAME})
 
 cs_add_executable(visualize_tsdf
   src/visualize_tsdf.cc

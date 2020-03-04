@@ -27,7 +27,7 @@ struct EsdfVoxel {
   bool in_queue = false;
   bool fixed = false;
   bool boundary = false;
-
+  bool global = false;
   /**
    * Relative direction toward parent. If itself, then either uninitialized
    * or in the fixed frontier.
