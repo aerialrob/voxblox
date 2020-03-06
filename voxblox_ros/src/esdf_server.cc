@@ -33,12 +33,14 @@ EsdfServer::EsdfServer(const ros::NodeHandle& nh,
       publish_traversable_(false),
       traversability_radius_(1.0),
       incremental_update_(true),
-      num_subscribers_esdf_map_(0) {
+      num_subscribers_esdf_map_(0),
+      publish_global_info_(false) {
   // Set up map and integrator.
   esdf_map_.reset(new EsdfMap(esdf_config));
-  esdf_integrator_.reset(new EsdfIntegrator(esdf_integrator_config,
-                                            tsdf_map_->getTsdfLayerPtr(),
-                                            esdf_map_->getEsdfLayerPtr()));
+  esdf_global_map_.reset(new EsdfMap(esdf_config));
+  esdf_integrator_.reset(new EsdfIntegrator(
+      esdf_integrator_config, tsdf_map_->getTsdfLayerPtr(),
+      esdf_map_->getEsdfLayerPtr(), esdf_global_map_->getEsdfGlobalLayerPtr()));
 
   setupRos();
 }
@@ -48,6 +50,9 @@ void EsdfServer::setupRos() {
   esdf_pointcloud_pub_ =
       nh_private_.advertise<pcl::PointCloud<pcl::PointXYZI> >("esdf_pointcloud",
                                                               1, true);
+  esdf_pointcloud_local_pub_ =
+      nh_private_.advertise<pcl::PointCloud<pcl::PointXYZI> >(
+          "esdf_pointcloud_local", 1, true);
   esdf_slice_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZI> >(
       "esdf_slice", 1, true);
   traversable_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZI> >(
@@ -83,6 +88,9 @@ void EsdfServer::setupRos() {
                                 &EsdfServer::updateEsdfEvent, this);
   }
 
+  nh_private_.param("publish_global_info", publish_global_info_,
+                    publish_global_info_);
+
   timing::Timer load_saved_map("load_saved_map");
   tsdf_map_ = TsdfServer::getTsdfMapPtr();
   CHECK(tsdf_map_);
@@ -92,7 +100,7 @@ void EsdfServer::setupRos() {
   if (load_saved_map_) {
     if (!input_filepath.empty()) {
       // Verify that the map has an ESDF layer, otherwise generate it.
-      if (!TsdfServer::loadMap(input_filepath)) {
+      if (!EsdfServer::loadMap(input_filepath)) {
         ROS_ERROR("Couldn't load ESDF map!");
         std::cout << "Input filepath> " << input_filepath;
         // Check if the TSDF layer is non-empty...
@@ -113,11 +121,20 @@ void EsdfServer::setupRos() {
 void EsdfServer::publishAllUpdatedEsdfVoxels() {
   // Create a pointcloud with distance = intensity.
   pcl::PointCloud<pcl::PointXYZI> pointcloud;
-
-  createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(), &pointcloud);
-
+  pcl::PointCloud<pcl::PointXYZI> pointcloud_local;
+  if (publish_global_info_) {
+    createDistancePointcloudFromEsdfLayer(
+        esdf_global_map_->getEsdfGlobalLayer(), &pointcloud);
+  } else {
+    createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(),
+                                          &pointcloud);
+  }
+  createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(),
+                                        &pointcloud_local);
   pointcloud.header.frame_id = world_frame_;
+  pointcloud_local.header.frame_id = world_frame_;
   esdf_pointcloud_pub_.publish(pointcloud);
+  esdf_pointcloud_local_pub_.publish(pointcloud_local);
 }
 
 void EsdfServer::publishSlices() {
@@ -126,8 +143,14 @@ void EsdfServer::publishSlices() {
   pcl::PointCloud<pcl::PointXYZI> pointcloud;
 
   constexpr int kZAxisIndex = 2;
-  createDistancePointcloudFromEsdfLayerSlice(
-      esdf_map_->getEsdfLayer(), kZAxisIndex, slice_level_, &pointcloud);
+  if (publish_global_info_) {
+    createDistancePointcloudFromEsdfLayerSlice(
+        esdf_global_map_->getEsdfGlobalLayer(), kZAxisIndex, slice_level_,
+        &pointcloud);
+  } else {
+    createDistancePointcloudFromEsdfLayerSlice(
+        esdf_map_->getEsdfLayer(), kZAxisIndex, slice_level_, &pointcloud);
+  }
 
   pointcloud.header.frame_id = world_frame_;
   esdf_slice_pub_.publish(pointcloud);
@@ -150,6 +173,9 @@ bool EsdfServer::generateEsdfCallback(
 
 void EsdfServer::updateEsdfEvent(const ros::TimerEvent& /*event*/) {
   updateEsdf();
+  updateGlobalEsdf();
+  esdf_integrator_->clearGlobalEsdfMap();
+  esdf_integrator_->clearEsdfMap();
 }
 
 void EsdfServer::publishPointclouds() {
@@ -158,7 +184,6 @@ void EsdfServer::publishPointclouds() {
   if (publish_slices_) {
     publishSlices();
   }
-
   if (publish_traversable_) {
     publishTraversable();
   }
@@ -191,8 +216,18 @@ void EsdfServer::publishMap(bool reset_remote_map) {
     const bool only_updated = !reset_remote_map;
     timing::Timer publish_map_timer("map/publish_esdf");
     voxblox_msgs::Layer layer_msg;
-    serializeLayerAsMsg<EsdfVoxel>(this->esdf_map_->getEsdfLayer(),
-                                   only_updated, &layer_msg);
+    if (publish_global_info_) {
+      serializeLayerAsMsg<EsdfVoxel>(
+          this->esdf_global_map_->getEsdfGlobalLayer(), only_updated,
+          &layer_msg);
+    } else {
+      // serializeLayerAsMsg<EsdfVoxel>(this->esdf_map_->getEsdfLayer(),
+      //                                only_updated, &layer_msg);
+      serializeLayerAsMsg<EsdfVoxel>(
+          this->esdf_map_->getEsdfLayer(), only_updated,
+          &layer_msg);
+    }
+
     if (reset_remote_map) {
       layer_msg.action = static_cast<uint8_t>(MapDerializationAction::kReset);
     }
@@ -209,18 +244,20 @@ bool EsdfServer::saveMap(const std::string& file_path) {
 
   constexpr bool kClearFile = false;
   return success &&
-         io::SaveLayer(esdf_map_->getEsdfLayer(), file_path, kClearFile);
+         io::SaveLayer(esdf_global_map_->getEsdfLayer(), file_path, kClearFile);
 }
 
 bool EsdfServer::loadMap(const std::string& file_path) {
   // Load in the same order: TSDF first, then ESDF.
-  bool success = TsdfServer::loadMap(file_path);
+  bool success_tsdf = TsdfServer::loadMap(file_path);
 
   constexpr bool kMultipleLayerSupport = true;
-  return success &&
-         io::LoadBlocksFromFile(
-             file_path, Layer<EsdfVoxel>::BlockMergingStrategy::kReplace,
-             kMultipleLayerSupport, esdf_map_->getEsdfLayerPtr());
+  bool success_esdf = io::LoadBlocksFromFile(
+      file_path, Layer<EsdfVoxel>::BlockMergingStrategy::kReplace,
+      kMultipleLayerSupport, esdf_global_map_->getEsdfGlobalLayerPtr());
+  esdf_integrator_->setGlobalLayer();
+
+  return success_tsdf && success_esdf;
 }
 
 void EsdfServer::updateEsdf() {
@@ -229,6 +266,8 @@ void EsdfServer::updateEsdf() {
     esdf_integrator_->updateFromTsdfLayer(clear_updated_flag_esdf);
   }
 }
+
+void EsdfServer::updateGlobalEsdf() { esdf_integrator_->updateFromEsdfLayer(); }
 
 void EsdfServer::updateEsdfBatch(bool full_euclidean) {
   if (tsdf_map_->getTsdfLayer().getNumberOfAllocatedBlocks() > 0) {
@@ -262,6 +301,7 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
     Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
     Eigen::Quaterniond quat_mult = quat_rot1 * quat;
     esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
+    esdf_integrator_->setLimitArea(T_G_C.getPosition());
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");
@@ -272,9 +312,14 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
 
 void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
   timing::Timer receive_map_timer("map/receive_esdf");
-
-  bool success =
-      deserializeMsgToLayer<EsdfVoxel>(layer_msg, esdf_map_->getEsdfLayerPtr());
+  bool success;
+  if (publish_global_info_) {
+    success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
+                                               esdf_map_->getEsdfLayerPtr());
+  } else {
+    success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
+                                               esdf_map_->getEsdfLayerPtr());
+  }
 
   if (!success) {
     ROS_ERROR_THROTTLE(10, "Got an invalid ESDF map message!");
@@ -285,9 +330,16 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
 }
 
 void EsdfServer::clear() {
-  esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
+  if (publish_global_info_) {
+    esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
+  } else {
+    esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
+  }
+
   esdf_integrator_->clear();
-  CHECK_EQ(esdf_map_->getEsdfLayerPtr()->getNumberOfAllocatedBlocks(), 0u);
+  CHECK_EQ(
+      esdf_global_map_->getEsdfGlobalLayerPtr()->getNumberOfAllocatedBlocks(),
+      0u);
 
   TsdfServer::clear();
 

@@ -333,7 +333,7 @@ void TsdfServer::processPointCloudMessageAndInsert(
 bool TsdfServer::getNextPointcloudFromQueue(
     std::queue<sensor_msgs::PointCloud2::Ptr>* queue,
     sensor_msgs::PointCloud2::Ptr* pointcloud_msg, Transformation* T_G_C) {
-  const size_t kMaxQueueSize = 10;
+  const size_t kMaxQueueSize = 20;
   if (queue->empty()) {
     return false;
   }
@@ -386,8 +386,8 @@ void TsdfServer::insertPointcloud(
   }
 
   if (verbose_) {
-    ROS_INFO_STREAM("Timings: " << std::endl << timing::Timing::Print());
-    ROS_INFO_STREAM(
+    ROS_ERROR_STREAM("Timings: " << std::endl << timing::Timing::Print());
+    ROS_ERROR_STREAM(
         "Layer memory: " << tsdf_map_->getTsdfLayer().getMemorySize());
   }
 }
