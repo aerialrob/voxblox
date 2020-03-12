@@ -174,7 +174,7 @@ bool EsdfServer::generateEsdfCallback(
 void EsdfServer::updateEsdfEvent(const ros::TimerEvent& /*event*/) {
   updateEsdf();
   updateGlobalEsdf();
-  esdf_integrator_->clearGlobalEsdfMap();
+  //esdf_integrator_->clearGlobalEsdfMap();
   esdf_integrator_->clearEsdfMap();
 }
 
@@ -298,7 +298,7 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
                             T_G_C.getRotation().y(), T_G_C.getRotation().z()};
     // Transform it to camera_link ref. frame. Now, it is in
     // /camera_depth_optical_frame
-    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
+    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, -0.707};
     Eigen::Quaterniond quat_mult = quat_rot1 * quat;
     esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
     esdf_integrator_->setLimitArea(T_G_C.getPosition());
