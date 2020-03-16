@@ -191,12 +191,12 @@ void EsdfIntegrator::setLimitArea(const Point& position) {
     HierarchicalIndexMap block_voxel_list_occ;
     timing::Timer limit_area_timer("esdf_global/limit_area");
     Eigen::MatrixXd limit_area(2, 3);
-    limit_area << config_.x_min - config_.robot_radius,
-        config_.y_min - config_.robot_radius,
-        config_.z_min - config_.robot_radius,
-        config_.x_max + config_.robot_radius,
-        config_.y_max + config_.robot_radius,
-        config_.z_max + config_.robot_radius;
+    limit_area << config_.x_min,
+        config_.y_min,
+        config_.z_min,
+        config_.x_max,
+        config_.y_max,
+        config_.z_max;
 
     utils::getAndAllocateLimitAreaAroundPoint(
         position, &limit_area, esdf_global_layer_, &block_voxel_list_occ);
@@ -213,7 +213,7 @@ void EsdfIntegrator::setLimitArea(const Point& position) {
         }
         EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
 
-        esdf_voxel.distance = -config_.default_distance_m;
+        esdf_voxel.distance = 0.0;
         esdf_voxel.observed = true;
         esdf_voxel.hallucinated = false;
         esdf_voxel.parent.setZero();
