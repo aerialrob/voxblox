@@ -15,6 +15,7 @@
 #include "voxblox/utils/neighbor_tools.h"
 #include "voxblox/utils/timing.h"
 
+#include <mav_msgs/eigen_mav_msgs.h>
 namespace voxblox {
 
 /**
@@ -85,7 +86,7 @@ class EsdfIntegrator {
    * Points added this way are marked as "hallucinated," and can subsequently
    * be cleared based on this.
    */
-  void addNewRobotPosition(const Point& position);
+  void addNewRobotPosition(const Point& position, mav_msgs::EigenTrajectoryPoint pose);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the
