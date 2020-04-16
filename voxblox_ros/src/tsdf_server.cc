@@ -386,8 +386,8 @@ void TsdfServer::insertPointcloud(
   }
 
   if (verbose_) {
-    ROS_ERROR_STREAM("Timings: " << std::endl << timing::Timing::Print());
-    ROS_ERROR_STREAM(
+    ROS_INFO_STREAM("Timings: " << std::endl << timing::Timing::Print());
+    ROS_INFO_STREAM(
         "Layer memory: " << tsdf_map_->getTsdfLayer().getMemorySize());
   }
 }

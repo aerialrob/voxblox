@@ -110,8 +110,6 @@ inline TsdfIntegratorBase::Config getTsdfIntegratorConfigFromRosParam(
   nh_private.param("mobile_obstacle_detection",
                    integrator_config.mobile_obstacle_detection,
                    integrator_config.mobile_obstacle_detection);
-  nh_private.param("decay_time", integrator_config.decay_time,
-                   integrator_config.decay_time);
   integrator_config.default_truncation_distance =
       static_cast<float>(truncation_distance);
   integrator_config.max_weight = static_cast<float>(max_weight);
@@ -176,8 +174,6 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
   nh_private.param("mobile_obstacle_detection",
                    esdf_integrator_config.mobile_obstacle_detection,
                    esdf_integrator_config.mobile_obstacle_detection);
-  nh_private.param("decay_time", esdf_integrator_config.decay_time,
-                   esdf_integrator_config.decay_time);
   if (esdf_integrator_config.default_distance_m <
       esdf_integrator_config.max_distance_m) {
     esdf_integrator_config.default_distance_m =
