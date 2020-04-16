@@ -144,9 +144,6 @@ void EsdfIntegrator::updateFromEsdfLayer() {
 
       const EsdfVoxel& esdf_voxel =
           esdf_block->getVoxelByLinearIndex(lin_index);
-      // if (esdf_voxel.distance == config_.default_distance_m) {
-      //   esdf_global_voxel.distance = esdf_voxel.distance;
-      // }
       if (!esdf_voxel.observed) {
         VoxelIndex v_index =
             esdf_block->computeVoxelIndexFromLinearIndex(lin_index);
@@ -154,9 +151,6 @@ void EsdfIntegrator::updateFromEsdfLayer() {
         updated_voxel_list[block_index].push_back(v_index);
         continue;
       }
-      // if (!esdf_voxel.fixed && esdf_voxel.distance <= 0.0) {
-      //   continue;
-      // }
       esdf_global_voxel.distance = esdf_voxel.distance;
     }
   }
@@ -175,7 +169,10 @@ void EsdfIntegrator::setGlobalLayer() {
     for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
       EsdfVoxel& esdf_global_voxel =
           esdf_global_block->getVoxelByLinearIndex(lin_index);
-      if (esdf_global_voxel.distance > 1.0) {
+      // Set the global flag to true to all voxels which are occupied or near
+      // occupied spaces If their distance is smaller than the defined robot
+      // radius
+      if (esdf_global_voxel.distance > config_.robot_radius) {
         continue;
       } else {
         esdf_global_voxel.global = true;
@@ -228,12 +225,11 @@ void EsdfIntegrator::setLimitArea(const Point& position) {
 }
 
 void EsdfIntegrator::clearEsdfMap() {
-  if (config_.mobile_obstacle_detection) {  //&& (config_.decay_time % 5 ==
-                                            // 0)) {
+  // If we want to be able to detect mobile obstacles the local esdf map
+  // must be cleared
+  if (config_.mobile_obstacle_detection) {
     esdf_layer_->removeAllBlocks();
-    config_.decay_time = 0;
   }
-  // config_.decay_time++;
 }
 
 void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
@@ -433,17 +429,7 @@ void EsdfIntegrator::processRaiseSet() {
     raise_.pop();
 
     EsdfVoxel* voxel = esdf_layer_->getVoxelPtrByGlobalIndex(global_index);
-    // if (CHECK_NOTNULL(voxel)) {
-    //   BlockIndex block_index;
-    //   VoxelIndex voxel_index;
-    //   getBlockAndVoxelIndexFromGlobalVoxelIndex(global_index,
-    //   voxels_per_side,
-    //                                             &block_index,
-    //                                             &voxel_index);
-    //   (*block_voxel_list)[block_index].push_back(voxel_index);
-    //   Block<EsdfVoxel>::Ptr esdf_global_block =
-    //       esdf_layer_->allocateBlockPtrByIndex(block_index);
-    // }
+    // CHECK_NOTNULL(voxel);
 
     // Get the global indices of neighbors.
     Neighborhood<>::getFromGlobalIndex(global_index, &neighbor_indices);
