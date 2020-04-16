@@ -1,13 +1,11 @@
-#include <voxblox_ros/conversions.h>
-
-#include "voxblox_ros/esdf_server.h"
-#include "voxblox_ros/ros_params.h"
-
-#include <tf/LinearMath/Transform.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
+#include <tf/LinearMath/Transform.h>
+#include <voxblox_ros/conversions.h>
+#include "voxblox_ros/esdf_server.h"
+#include "voxblox_ros/ros_params.h"
 
 namespace voxblox {
 
@@ -174,7 +172,7 @@ bool EsdfServer::generateEsdfCallback(
 void EsdfServer::updateEsdfEvent(const ros::TimerEvent& /*event*/) {
   updateEsdf();
   updateGlobalEsdf();
-  esdf_integrator_->clearGlobalEsdfMap();
+  //esdf_integrator_->clearGlobalEsdfMap();
   esdf_integrator_->clearEsdfMap();
 }
 
@@ -224,7 +222,7 @@ void EsdfServer::publishMap(bool reset_remote_map) {
       // serializeLayerAsMsg<EsdfVoxel>(this->esdf_map_->getEsdfLayer(),
       //                                only_updated, &layer_msg);
       serializeLayerAsMsg<EsdfVoxel>(
-          this->esdf_global_map_->getEsdfGlobalLayer(), only_updated,
+          this->esdf_map_->getEsdfLayer(), only_updated,
           &layer_msg);
     }
 

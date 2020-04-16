@@ -1,6 +1,9 @@
 #include "voxblox/integrator/esdf_integrator.h"
+
 #include <voxblox/utils/planning_utils.h>
+
 #include <iostream>
+
 namespace voxblox {
 
 EsdfIntegrator::EsdfIntegrator(const Config& config,
@@ -26,8 +29,7 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 // Used for planning - allocates sphere around as observed but occupied,
 // and clears space in a sphere around current position.
 void EsdfIntegrator::addNewRobotPosition(const Point& position,
-                                         Eigen::Quaterniond rotation) 
-
+                                         Eigen::Quaterniond rotation) {
   // Second set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
   timing::Timer clear_timer("esdf/clear_radius_and_fov");
@@ -73,7 +75,7 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position,
 }
 
 void EsdfIntegrator::updateFromTsdfLayerBatch() {
-  //esdf_layer_->removeAllBlocks();
+  // esdf_layer_->removeAllBlocks();
   BlockIndexList tsdf_blocks;
   tsdf_layer_->getAllAllocatedBlocks(&tsdf_blocks);
   tsdf_blocks.insert(tsdf_blocks.end(), updated_blocks_.begin(),
@@ -90,7 +92,6 @@ void EsdfIntegrator::updateFromTsdfLayer(bool clear_updated_flag) {
   updated_blocks_.clear();
   const bool kIncremental = true;
   updateFromTsdfBlocks(tsdf_blocks, kIncremental);
-
   if (clear_updated_flag) {
     for (const BlockIndex& block_index : tsdf_blocks) {
       if (tsdf_layer_->hasBlock(block_index)) {
@@ -123,7 +124,7 @@ void EsdfIntegrator::clearGlobalEsdfMap() {
 void EsdfIntegrator::updateFromEsdfLayer() {
   CHECK_EQ(esdf_global_layer_->voxels_per_side(),
            esdf_layer_->voxels_per_side());
-  timing::Timer esdf_global_timer("esdf_global");
+  timing::Timer esdf_global_timer("esdf_global/update_from_esdf_local");
 
   BlockIndexList esdf_blocks;
   esdf_layer_->getAllUpdatedBlocks(Update::kMap, &esdf_blocks);
@@ -146,9 +147,6 @@ void EsdfIntegrator::updateFromEsdfLayer() {
 
       const EsdfVoxel& esdf_voxel =
           esdf_block->getVoxelByLinearIndex(lin_index);
-      // if (esdf_voxel.distance == config_.default_distance_m) {
-      //   esdf_global_voxel.distance = esdf_voxel.distance;
-      // }
       if (!esdf_voxel.observed) {
         VoxelIndex v_index =
             esdf_block->computeVoxelIndexFromLinearIndex(lin_index);
@@ -156,9 +154,6 @@ void EsdfIntegrator::updateFromEsdfLayer() {
         updated_voxel_list[block_index].push_back(v_index);
         continue;
       }
-      // if (!esdf_voxel.fixed && esdf_voxel.distance <= 0.0) {
-      //   continue;
-      // }
       esdf_global_voxel.distance = esdf_voxel.distance;
     }
   }
@@ -168,6 +163,7 @@ void EsdfIntegrator::updateFromEsdfLayer() {
 void EsdfIntegrator::setGlobalLayer() {
   BlockIndexList esdf_global_blocks;
   esdf_global_layer_->getAllAllocatedBlocks(&esdf_global_blocks);
+  timing::Timer set_global_layer("esdf_global/set_global");
   for (const BlockIndex& block_index : esdf_global_blocks) {
     Block<EsdfVoxel>::Ptr esdf_global_block =
         esdf_global_layer_->allocateBlockPtrByIndex(block_index);
@@ -176,13 +172,17 @@ void EsdfIntegrator::setGlobalLayer() {
     for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
       EsdfVoxel& esdf_global_voxel =
           esdf_global_block->getVoxelByLinearIndex(lin_index);
-      if (esdf_global_voxel.distance > 0.0) {
+      // Set the global flag to true to all voxels which are occupied or near
+      // occupied spaces If their distance is smaller than the defined robot
+      // radius
+      if (esdf_global_voxel.distance > config_.robot_radius) {
         continue;
       } else {
         esdf_global_voxel.global = true;
       }
     }
   }
+  set_global_layer.Stop();
 }
 
 void EsdfIntegrator::setLimitArea(const Point& position) {
@@ -228,11 +228,11 @@ void EsdfIntegrator::setLimitArea(const Point& position) {
 }
 
 void EsdfIntegrator::clearEsdfMap() {
-  if (config_.mobile_obstacle_detection) {//&& (config_.decay_time % 5 == 0)) {
+  // If we want to be able to detect mobile obstacles the local esdf map
+  // must be cleared
+  if (config_.mobile_obstacle_detection) {
     esdf_layer_->removeAllBlocks();
-    config_.decay_time = 0;
   }
-  //config_.decay_time++;
 }
 
 void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
@@ -240,7 +240,8 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
   CHECK_EQ(tsdf_layer_->voxels_per_side(), esdf_layer_->voxels_per_side());
   timing::Timer esdf_timer("esdf");
 
-  // Go through all blocks in TSDF and copy their values for relevant voxels.
+  // Go through all blocks in TSDF and copy their values for relevant
+  // voxels.
   size_t num_lower = 0u;
   size_t num_raise = 0u;
   size_t num_new = 0u;
@@ -318,10 +319,10 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
           // There are three main options:
           // (1a) unfix: if was fixed before but not anymore, raise.
           // (1) lower: esdf or tsdf is fixed, and tsdf is closer to surface
-          // than it used to be. (2) raise: esdf or tsdf is fixed, and tsdf is
-          // further from surface than it used to be. (3) sign flip: tsdf and
-          // esdf have different signs, otherwise the lower and raise rules
-          // apply as above.
+          // than it used to be. (2) raise: esdf or tsdf is fixed, and tsdf
+          // is further from surface than it used to be. (3) sign flip: tsdf
+          // and esdf have different signs, otherwise the lower and raise
+          // rules apply as above.
           if (tsdf_fixed || esdf_voxel.fixed) {
             if (!tsdf_fixed) {
               // New case: have to raise the voxel
@@ -406,7 +407,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
           << " New: " << num_new;
 
   timing::Timer raise_timer("esdf/raise_esdf");
-  processRaiseSet();
+  // processRaiseSet();
   raise_timer.Stop();
 
   timing::Timer update_timer("esdf/update_esdf");
@@ -431,7 +432,7 @@ void EsdfIntegrator::processRaiseSet() {
     raise_.pop();
 
     EsdfVoxel* voxel = esdf_layer_->getVoxelPtrByGlobalIndex(global_index);
-    CHECK_NOTNULL(voxel);
+    // CHECK_NOTNULL(voxel);
 
     // Get the global indices of neighbors.
     Neighborhood<>::getFromGlobalIndex(global_index, &neighbor_indices);
@@ -495,7 +496,7 @@ void EsdfIntegrator::processOpenSet() {
     open_.pop();
 
     EsdfVoxel* voxel = esdf_layer_->getVoxelPtrByGlobalIndex(global_index);
-    CHECK_NOTNULL(voxel);
+    // CHECK_NOTNULL(voxel);
     voxel->in_queue = false;
 
     // Skip voxels that are unobserved or outside the ranges we care about.

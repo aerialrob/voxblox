@@ -3,16 +3,16 @@
 
 #include <algorithm>
 
-#include <voxblox/integrator/integrator_utils.h>
 #include "voxblox/core/layer.h"
 #include "voxblox/core/voxel.h"
 #include "voxblox/utils/camera_model.h"
+#include <voxblox/integrator/integrator_utils.h>
 
-#include <kindr/minimal/quat-transformation.h>
 #include <mav_msgs/eigen_mav_msgs.h>
-#include <cmath>
 #include <iostream>
 #include "voxblox/core/common.h"
+#include <kindr/minimal/quat-transformation.h>
+#include <cmath>
 #include "voxblox/integrator/esdf_integrator.h"
 //#include <voxblox_planning_common/gain_evaluator.h>
 
@@ -92,7 +92,6 @@ void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& positio
   Eigen::MatrixXd rel_limit_area(2, 3);
   rel_limit_area << (x_lim - x) / voxel_size, (y_lim - y) / voxel_size,
       (z_lim - z) / voxel_size;
-  std::cout << "rel limit area \n" << rel_limit_area << "\n";
 
   // Draw walls in x
   for (FloatingPoint x = 0; x < 2; x++) {
