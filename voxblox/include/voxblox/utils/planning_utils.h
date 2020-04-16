@@ -27,18 +27,18 @@ void getAndAllocateSphereAroundPoint(const Point& center,FloatingPoint radius,
 
 
 template <typename VoxelType>
-void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, HierarchicalIndexMap* block_voxel_list);
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& position, Eigen::Quaterniond rotation, FloatingPoint radius, HierarchicalIndexMap* block_voxel_list);
 
 template <typename VoxelType>
-void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
+void getAndAllocateFOVAroundPoint(const Point& position, Eigen::Quaterniond rotation, FloatingPoint max_depth, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
 
 
 
 template <typename VoxelType>
-void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose, Eigen::MatrixXd* limit_area, HierarchicalIndexMap* block_voxel_list);
+void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& position, Eigen::MatrixXd* limit_area, HierarchicalIndexMap* block_voxel_list);
 
 template <typename VoxelType>
-void getAndAllocateLimitAreaAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
+void getAndAllocateLimitAreaAroundPoint(const Point& position, Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
 
 /**
  * Tools for manually editing a set of voxels. Sets the values around a sphere

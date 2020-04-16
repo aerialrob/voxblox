@@ -1,4 +1,5 @@
 #include "voxblox/integrator/tsdf_integrator.h"
+
 #include <iostream>
 #include <list>
 
@@ -192,8 +193,9 @@ void TsdfIntegratorBase::updateTsdfVoxel(const Point& origin,
     return;
   }
 
-  const float new_sdf =
-      (sdf * updated_weight + tsdf_voxel->distance * tsdf_voxel->weight) /
+  float new_sdf;
+  new_sdf =
+      (sdf * updated_weight + (tsdf_voxel->distance * tsdf_voxel->weight)) /
       new_weight;
 
   // color blending is expensive only do it close to the surface
@@ -233,7 +235,7 @@ float TsdfIntegratorBase::getVoxelWeight(const Point& point_C) const {
   }
   const FloatingPoint dist_z = std::abs(point_C.z());
   if (dist_z > kEpsilon) {
-    return 1.0f / (dist_z * dist_z);
+    return 1.0f / (dist_z * dist_z);  // 500.0f / (dist_z * dist_z);
   }
   return 0.0f;
 }
@@ -323,6 +325,10 @@ void MergedTsdfIntegrator::integratePointCloud(const Transformation& T_G_C,
   bundleRays(T_G_C, points_C, freespace_points, index_getter.get(), &voxel_map,
              &clear_map);
 
+  if (config_.mobile_obstacle_detection) {
+    layer_->removeAllBlocks();
+  }
+
   integrateRays(T_G_C, points_C, colors, config_.enable_anti_grazing, false,
                 voxel_map, clear_map);
 
@@ -404,7 +410,6 @@ void MergedTsdfIntegrator::integrateVoxel(
   }
 
   const Point merged_point_G = T_G_C * merged_point_C;
-
   RayCaster ray_caster(origin, merged_point_G, clearing_ray,
                        config_.voxel_carving_enabled, config_.max_ray_length_m,
                        voxel_size_inv_, config_.default_truncation_distance);

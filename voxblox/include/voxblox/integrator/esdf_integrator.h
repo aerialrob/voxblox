@@ -76,7 +76,7 @@ class EsdfIntegrator {
     FloatingPoint clear_sphere_radius = 1.5;
     FloatingPoint occupied_sphere_radius = 5.0;
 
-  /**
+    /**
      * Limits in x, y and z to contruct a service area
      */
 
@@ -87,13 +87,17 @@ class EsdfIntegrator {
     double z_min = 0;
     double z_max = 2;
 
-  FloatingPoint robot_radius = 0.5;
-
-
+    bool limit_area = false;
+    bool loaded_limit_area = false;
+    bool clear_fov = false;
+    bool mobile_obstacle_detection = false;
+    FloatingPoint robot_radius = 0.5;
+    int decay_time= 1;
   };
 
   EsdfIntegrator(const Config& config, Layer<TsdfVoxel>* tsdf_layer,
-                 Layer<EsdfVoxel>* esdf_layer);
+                 Layer<EsdfVoxel>* esdf_layer,
+                 Layer<EsdfVoxel>* esdf_global_layer);
 
   /**
    *Used for planning - allocates sphere around as observed but occupied,
@@ -101,7 +105,7 @@ class EsdfIntegrator {
    * Points added this way are marked as "hallucinated," and can subsequently
    * be cleared based on this.
    */
-  void addNewRobotPosition(const Point& position, mav_msgs::EigenTrajectoryPoint pose);
+  void addNewRobotPosition(const Point& position, Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the
@@ -114,6 +118,29 @@ class EsdfIntegrator {
    */
   void updateFromTsdfLayer(bool clear_updated_flag);
 
+  /**
+   * Incrementally update the Esdf global layer from the local esdf layer
+   */
+  void updateFromEsdfLayer();
+  /**
+   * Set the global atribute of the esdf_global_layer to true for the voxels
+   * which are occupied
+   */
+  void setGlobalLayer();
+  /**
+   * Create and set the properties of the limit area
+   */
+  void setLimitArea(const Point& position);
+  /**
+   * When the mobile obstacle detection param is set to true, this function will
+   * remove all blocks of the esdf layer
+   */
+  void clearEsdfMap();
+  /**
+   * Set to free all voxels from the global ESDF map that have not been updated by 
+   * the depth camera
+   */
+  void clearGlobalEsdfMap();
   /**
    * Short-cut for pushing neighbors (i.e., incremental update) by default.
    * Not necessary in batch.
@@ -173,6 +200,7 @@ class EsdfIntegrator {
 
   Layer<TsdfVoxel>* tsdf_layer_;
   Layer<EsdfVoxel>* esdf_layer_;
+  Layer<EsdfVoxel>* esdf_global_layer_;
 
   /**
    * Open Queue for incremental updates. Contains global voxel indices
@@ -191,6 +219,7 @@ class EsdfIntegrator {
   FloatingPoint voxel_size_;
 
   IndexSet updated_blocks_;
+  HierarchicalIndexMap updated_voxel_list;
 };
 
 }  // namespace voxblox

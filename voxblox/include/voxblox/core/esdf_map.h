@@ -34,6 +34,8 @@ class EsdfMap {
   explicit EsdfMap(const Config& config)
       : esdf_layer_(new Layer<EsdfVoxel>(config.esdf_voxel_size,
                                          config.esdf_voxels_per_side)),
+        esdf_global_layer_(new Layer<EsdfVoxel>(config.esdf_voxel_size,
+                                                config.esdf_voxels_per_side)),
         interpolator_(esdf_layer_.get()) {
     block_size_ = config.esdf_voxel_size * config.esdf_voxels_per_side;
   }
@@ -51,7 +53,9 @@ class EsdfMap {
   virtual ~EsdfMap() {}
 
   Layer<EsdfVoxel>* getEsdfLayerPtr() { return esdf_layer_.get(); }
+  Layer<EsdfVoxel>* getEsdfGlobalLayerPtr() { return esdf_global_layer_.get(); }
   const Layer<EsdfVoxel>& getEsdfLayer() const { return *esdf_layer_; }
+  const Layer<EsdfVoxel>& getEsdfGlobalLayer() const { return *esdf_global_layer_; }
 
   FloatingPoint block_size() const { return block_size_; }
   FloatingPoint voxel_size() const { return esdf_layer_->voxel_size(); }
@@ -120,6 +124,7 @@ class EsdfMap {
 
   // The layers.
   Layer<EsdfVoxel>::Ptr esdf_layer_;
+  Layer<EsdfVoxel>::Ptr esdf_global_layer_;
 
   // Interpolator for the layer.
   Interpolator<EsdfVoxel> interpolator_;

@@ -203,6 +203,7 @@ class TsdfServer {
   /// What output information to publish
   bool publish_pointclouds_on_update_;
   bool publish_slices_;
+  bool publish_occupied_nodes_;
   bool publish_pointclouds_;
   bool publish_tsdf_map_;
 
@@ -255,7 +256,7 @@ class TsdfServer {
   /**
    * Distance in z above which the pointcloud data is ignored
    */
-  double max_distance_pointcloud_;
+  double max_depth_pointcloud_;
 
   // Last message times for throttling input.
   ros::Time last_msg_time_ptcloud_;
