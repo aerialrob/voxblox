@@ -26,6 +26,7 @@ struct EsdfVoxel {
   bool hallucinated = false;
   bool in_queue = false;
   bool fixed = false;
+  bool boundary = false;
 
   /**
    * Relative direction toward parent. If itself, then either uninitialized

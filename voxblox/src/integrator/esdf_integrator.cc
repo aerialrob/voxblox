@@ -25,7 +25,53 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenTrajectoryPoint pose) {
   timing::Timer clear_timer("esdf/clear_radius");
 
-  // First set all in inner sphere to free.
+
+  // First set limit area list to occupied
+  HierarchicalIndexMap block_voxel_list_occ;
+  timing::Timer outer_sphere_timer("esdf/clear_radius/get_outer_sphere");
+  // utils::getAndAllocateSphereAroundPoint(position,
+  //                                        config_.occupied_sphere_radius,
+  //                                        esdf_layer_, &block_voxel_list_occ);
+
+  Eigen::MatrixXd limit_area(2, 3);
+  limit_area << config_.x_min,
+                config_.y_min, 
+                config_.z_min,
+                config_.x_max,
+                config_.y_max,
+                config_.z_max;
+
+
+  utils::getAndAllocateLimitAreaAroundPoint(position, pose, &limit_area,
+                                         esdf_layer_, &block_voxel_list_occ);
+  outer_sphere_timer.Stop();
+  for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list_occ) {
+    // Get block.
+    Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
+
+    for (const VoxelIndex& voxel_index : kv.second) {
+      if (!block_ptr->isValidVoxelIndex(voxel_index)) {
+        continue;
+      }
+      EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
+      if (!esdf_voxel.observed) {
+        esdf_voxel.distance = -config_.default_distance_m;
+        esdf_voxel.observed = true;
+        esdf_voxel.hallucinated = false;
+        esdf_voxel.parent.setZero();
+        esdf_voxel.fixed = true;
+        esdf_voxel.boundary = true;
+        updated_blocks_.insert(kv.first);
+      } else if (!esdf_voxel.in_queue) {
+        GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
+            kv.first, voxel_index, voxels_per_side_);
+        open_.push(global_index, esdf_voxel.distance);
+      }
+    }
+  }
+
+
+  // Second set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
 
@@ -34,11 +80,10 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
                                       esdf_layer_, &block_voxel_list );
   utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
                                         esdf_layer_, &block_voxel_list);
+ 
+  
   sphere_timer.Stop();
  
-  //int global_x_idx;
-  //int global_y_idx;
-  //int global_z_idx;
   for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list) {
     // Get block.
     Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
@@ -50,79 +95,29 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position, mav_msgs::EigenT
       }
       //bool skip = false;
       EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
-      //GlobalIndex global_idx = getGlobalVoxelIndexFromBlockAndVoxelIndex(
-      //        kv.first, voxel_index, voxels_per_side_);
-      // We can clear unobserved or hallucinated voxels.
 
-      //if((esdf_voxel.observed) && (esdf_voxel.distance <= 0.5)){
-      //  global_x_idx = global_idx.x();
-      //  global_y_idx = global_idx.y();
-      //  global_z_idx = global_idx.z();
-      //}
-      //std::cout << "[ESDF Integrator] Voxek index \n"<< voxel_index ;
-      
       if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
-      //  if((global_idx.x() > global_x_idx) && (global_idx.y() == global_y_idx) && (global_idx.z() == global_z_idx))
-      //  {
-          //std::cout << "[ESDF Integrator] Skip \n"<< global_idx ;
-      //    esdf_voxel.observed = false;
-      //    esdf_voxel.hallucinated = false;
-      //    esdf_voxel.parent.setZero();
-      //    updated_blocks_.insert(kv.first);
-      //    skip = true;
-      //  }else{
-        
+
          if (esdf_voxel.hallucinated) {
           GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
               kv.first, voxel_index, voxels_per_side_);
           raise_.push(global_index);
-          //std::cout << "[ESDF Integrator] global_index \n"<< global_index ;
+   
         }
-        //std::cout << "[ESDF Integrator] Voxel_index \n"<< voxel_index ;
-        //if(!skip){
+
           esdf_voxel.distance = config_.default_distance_m;
           esdf_voxel.observed = true;
           esdf_voxel.hallucinated = true;
           esdf_voxel.parent.setZero();
           updated_blocks_.insert(kv.first);
-       // }
-        
-
-       // }
+ 
+      
       }
       
     }
   }
 
-  // Second set all remaining unknown to occupied.
-  // HierarchicalIndexMap block_voxel_list_occ;
-  // timing::Timer outer_sphere_timer("esdf/clear_radius/get_outer_sphere");
-  // utils::getAndAllocateSphereAroundPoint(position,
-  //                                        config_.occupied_sphere_radius,
-  //                                        esdf_layer_, &block_voxel_list_occ);
-  // outer_sphere_timer.Stop();
-  // for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list_occ) {
-  //   // Get block.
-  //   Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
 
-  //   for (const VoxelIndex& voxel_index : kv.second) {
-  //     if (!block_ptr->isValidVoxelIndex(voxel_index)) {
-  //       continue;
-  //     }
-  //     EsdfVoxel& esdf_voxel = block_ptr->getVoxelByVoxelIndex(voxel_index);
-  //     if (!esdf_voxel.observed) {
-  //       esdf_voxel.distance = -config_.default_distance_m;
-  //       esdf_voxel.observed = true;
-  //       esdf_voxel.hallucinated = true;
-  //       esdf_voxel.parent.setZero();
-  //       updated_blocks_.insert(kv.first);
-  //     } else if (!esdf_voxel.in_queue) {
-  //       GlobalIndex global_index = getGlobalVoxelIndexFromBlockAndVoxelIndex(
-  //           kv.first, voxel_index, voxels_per_side_);
-  //       open_.push(global_index, esdf_voxel.distance);
-  //     }
-  //   }
-  // }
 
   VLOG(3) << "Changed " << updated_blocks_.size()
           << " blocks from unknown to free or occupied near the robot.";
@@ -209,116 +204,117 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
 
       const bool tsdf_fixed = isFixed(tsdf_voxel.distance);
       // If there was nothing there before:
-      if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
-        if (esdf_voxel.hallucinated) {
-          raise_.push(global_index);
-        }
-        if (tsdf_fixed) {
-          // In fixed band, just add and lock it.
-          esdf_voxel.distance = tsdf_voxel.distance;
-          esdf_voxel.fixed = true;
-          // Also add it to open so it can update the neighbors.
-          esdf_voxel.in_queue = true;
-          open_.push(global_index, esdf_voxel.distance);
+      if(!esdf_voxel.boundary){
+        if (!esdf_voxel.observed || esdf_voxel.hallucinated) {
+          if (esdf_voxel.hallucinated) {
+            raise_.push(global_index);
+          }
+          if (tsdf_fixed) {
+            // In fixed band, just add and lock it.
+            esdf_voxel.distance = tsdf_voxel.distance;
+            esdf_voxel.fixed = true;
+            // Also add it to open so it can update the neighbors.
+            esdf_voxel.in_queue = true;
+            open_.push(global_index, esdf_voxel.distance);
+          } else {
+            // Not in the fixed band. Just copy the sign.
+            esdf_voxel.distance =
+                signum(tsdf_voxel.distance) * (config_.default_distance_m);
+            esdf_voxel.fixed = false;
+  
+            if (incremental) {
+              if (updateVoxelFromNeighbors(global_index)) {
+                esdf_voxel.in_queue = true;
+                open_.push(global_index, esdf_voxel.distance);
+              }
+            }
+          }
+          // No matter what, basically, the parent is reset.
+          esdf_voxel.parent.setZero();
+          num_new++;
         } else {
-          // Not in the fixed band. Just copy the sign.
-          esdf_voxel.distance =
-              signum(tsdf_voxel.distance) * (config_.default_distance_m);
-          esdf_voxel.fixed = false;
-
-          if (incremental) {
-            if (updateVoxelFromNeighbors(global_index)) {
+          // If this voxel DID exist before.
+          // There are three main options:
+          // (1a) unfix: if was fixed before but not anymore, raise.
+          // (1) lower: esdf or tsdf is fixed, and tsdf is closer to surface than
+          // it used to be.
+          // (2) raise: esdf or tsdf is fixed, and tsdf is further from surface
+          // than it used to be.
+          // (3) sign flip: tsdf and esdf have different signs, otherwise the
+          // lower and raise rules apply as above.
+          if (tsdf_fixed || esdf_voxel.fixed) {
+            if (!tsdf_fixed) {
+              // New case: have to raise the voxel
+              esdf_voxel.distance =
+                  signum(tsdf_voxel.distance) * config_.default_distance_m;
+              esdf_voxel.parent.setZero();
+              esdf_voxel.fixed = false;
+              raise_.push(global_index);
               esdf_voxel.in_queue = true;
               open_.push(global_index, esdf_voxel.distance);
+              num_raise++;
+            } else if ((esdf_voxel.distance > 0.0f &&
+                        tsdf_voxel.distance + config_.min_diff_m <
+                            esdf_voxel.distance) ||
+                       (esdf_voxel.distance <= 0.0f &&
+                        tsdf_voxel.distance - config_.min_diff_m >
+                            esdf_voxel.distance)) {
+              // Lower.
+              esdf_voxel.fixed = tsdf_fixed;
+              if (esdf_voxel.fixed) {
+                esdf_voxel.distance = tsdf_voxel.distance;
+              } else {
+                esdf_voxel.distance =
+                    signum(tsdf_voxel.distance) * config_.default_distance_m;
+              }
+              esdf_voxel.parent.setZero();
+              esdf_voxel.in_queue = true;
+              open_.push(global_index, esdf_voxel.distance);
+              num_lower++;
+            } else if ((esdf_voxel.distance > 0.0f &&
+                        tsdf_voxel.distance - config_.min_diff_m >
+                            esdf_voxel.distance) ||
+                       (esdf_voxel.distance <= 0.0f &&
+                        tsdf_voxel.distance + config_.min_diff_m <
+                            esdf_voxel.distance)) {
+              // Raise.
+              esdf_voxel.fixed = tsdf_fixed;
+              if (esdf_voxel.fixed) {
+                esdf_voxel.distance = tsdf_voxel.distance;
+              } else {
+                esdf_voxel.distance =
+                    signum(tsdf_voxel.distance) * config_.default_distance_m;
+              }
+              esdf_voxel.parent.setZero();
+              raise_.push(global_index);
+              esdf_voxel.in_queue = true;
+              open_.push(global_index, esdf_voxel.distance);
+              num_raise++;
             }
-          }
-        }
-        // No matter what, basically, the parent is reset.
-        esdf_voxel.parent.setZero();
-        num_new++;
-      } else {
-        // If this voxel DID exist before.
-        // There are three main options:
-        // (1a) unfix: if was fixed before but not anymore, raise.
-        // (1) lower: esdf or tsdf is fixed, and tsdf is closer to surface than
-        // it used to be.
-        // (2) raise: esdf or tsdf is fixed, and tsdf is further from surface
-        // than it used to be.
-        // (3) sign flip: tsdf and esdf have different signs, otherwise the
-        // lower and raise rules apply as above.
-        if (tsdf_fixed || esdf_voxel.fixed) {
-          if (!tsdf_fixed) {
-            // New case: have to raise the voxel
-            esdf_voxel.distance =
-                signum(tsdf_voxel.distance) * config_.default_distance_m;
-            esdf_voxel.parent.setZero();
-            esdf_voxel.fixed = false;
-            raise_.push(global_index);
-            esdf_voxel.in_queue = true;
-            open_.push(global_index, esdf_voxel.distance);
-            num_raise++;
-          } else if ((esdf_voxel.distance > 0.0f &&
-                      tsdf_voxel.distance + config_.min_diff_m <
-                          esdf_voxel.distance) ||
-                     (esdf_voxel.distance <= 0.0f &&
-                      tsdf_voxel.distance - config_.min_diff_m >
-                          esdf_voxel.distance)) {
-            // Lower.
-            esdf_voxel.fixed = tsdf_fixed;
-            if (esdf_voxel.fixed) {
-              esdf_voxel.distance = tsdf_voxel.distance;
-            } else {
+          } else if (signum(tsdf_voxel.distance) != signum(esdf_voxel.distance)) {
+            // This means ESDF was positive and TSDF is negative.
+            // So lower.
+            if (tsdf_voxel.distance < esdf_voxel.distance) {
               esdf_voxel.distance =
                   signum(tsdf_voxel.distance) * config_.default_distance_m;
-            }
-            esdf_voxel.parent.setZero();
-            esdf_voxel.in_queue = true;
-            open_.push(global_index, esdf_voxel.distance);
-            num_lower++;
-          } else if ((esdf_voxel.distance > 0.0f &&
-                      tsdf_voxel.distance - config_.min_diff_m >
-                          esdf_voxel.distance) ||
-                     (esdf_voxel.distance <= 0.0f &&
-                      tsdf_voxel.distance + config_.min_diff_m <
-                          esdf_voxel.distance)) {
-            // Raise.
-            esdf_voxel.fixed = tsdf_fixed;
-            if (esdf_voxel.fixed) {
-              esdf_voxel.distance = tsdf_voxel.distance;
+              esdf_voxel.parent.setZero();
+              esdf_voxel.in_queue = true;
+              open_.push(global_index, esdf_voxel.distance);
+              num_lower++;
             } else {
+              // Otherwise ESDF was negative and TSDF is positive.
+              // So raise.
               esdf_voxel.distance =
                   signum(tsdf_voxel.distance) * config_.default_distance_m;
+              esdf_voxel.parent.setZero();
+              raise_.push(global_index);
+              num_raise++;
             }
-            esdf_voxel.parent.setZero();
-            raise_.push(global_index);
-            esdf_voxel.in_queue = true;
-            open_.push(global_index, esdf_voxel.distance);
-            num_raise++;
           }
-        } else if (signum(tsdf_voxel.distance) != signum(esdf_voxel.distance)) {
-          // This means ESDF was positive and TSDF is negative.
-          // So lower.
-          if (tsdf_voxel.distance < esdf_voxel.distance) {
-            esdf_voxel.distance =
-                signum(tsdf_voxel.distance) * config_.default_distance_m;
-            esdf_voxel.parent.setZero();
-            esdf_voxel.in_queue = true;
-            open_.push(global_index, esdf_voxel.distance);
-            num_lower++;
-          } else {
-            // Otherwise ESDF was negative and TSDF is positive.
-            // So raise.
-            esdf_voxel.distance =
-                signum(tsdf_voxel.distance) * config_.default_distance_m;
-            esdf_voxel.parent.setZero();
-            raise_.push(global_index);
-            num_raise++;
-          }
+          // Otherwise we just don't care. Not fixed voxels that match the right
+          // sign can be whatever value that they want to be.
         }
-        // Otherwise we just don't care. Not fixed voxels that match the right
-        // sign can be whatever value that they want to be.
       }
-
       esdf_voxel.observed = true;
       esdf_voxel.hallucinated = false;
     }

@@ -157,6 +157,22 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
   nh_private.param("esdf_add_occupied_crust",
                    esdf_integrator_config.add_occupied_crust,
                    esdf_integrator_config.add_occupied_crust);
+  nh_private.param("robot_radius",
+                   esdf_integrator_config.robot_radius,
+                   esdf_integrator_config.robot_radius);
+  nh_private.getParam("x_min",
+                   esdf_integrator_config.x_min);
+  nh_private.getParam("y_min",
+                   esdf_integrator_config.y_min);
+  nh_private.getParam("x_max",
+                   esdf_integrator_config.x_max);
+  nh_private.getParam("y_max",
+                   esdf_integrator_config.y_max);
+  nh_private.getParam("z_min",
+                   esdf_integrator_config.z_min);    
+  nh_private.getParam("z_max",
+                   esdf_integrator_config.z_max);     
+
   if (esdf_integrator_config.default_distance_m <
       esdf_integrator_config.max_distance_m) {
     esdf_integrator_config.default_distance_m =

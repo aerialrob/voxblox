@@ -32,6 +32,14 @@ void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_m
 template <typename VoxelType>
 void getAndAllocateFOVAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, FloatingPoint radius, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
 
+
+
+template <typename VoxelType>
+void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& center, mav_msgs::EigenTrajectoryPoint pose, Eigen::MatrixXd* limit_area, HierarchicalIndexMap* block_voxel_list);
+
+template <typename VoxelType>
+void getAndAllocateLimitAreaAroundPoint(const Point& center, mav_msgs::EigenTrajectoryPoint pose, Eigen::MatrixXd* limit_area, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
+
 /**
  * Tools for manually editing a set of voxels. Sets the values around a sphere
  * to be artifically free or occupied, and marks them as hallucinated.

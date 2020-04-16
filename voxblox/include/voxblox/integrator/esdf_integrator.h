@@ -75,6 +75,21 @@ class EsdfIntegrator {
      */
     FloatingPoint clear_sphere_radius = 1.5;
     FloatingPoint occupied_sphere_radius = 5.0;
+
+  /**
+     * Limits in x, y and z to contruct a service area
+     */
+
+    double x_min = 0;
+    double x_max = 0;
+    double y_min = 0;
+    double y_max = 0;
+    double z_min = 0;
+    double z_max = 2;
+
+  FloatingPoint robot_radius = 0.5;
+
+
   };
 
   EsdfIntegrator(const Config& config, Layer<TsdfVoxel>* tsdf_layer,
