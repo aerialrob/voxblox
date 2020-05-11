@@ -1,5 +1,5 @@
 #include "voxblox/core/esdf_map.h"
-
+#include <iomanip>  
 namespace voxblox {
 
 bool EsdfMap::getDistanceAtPosition(const Eigen::Vector3d& position,
@@ -60,6 +60,57 @@ bool EsdfMap::isObserved(const Eigen::Vector3d& position) const {
     return voxel.observed;
   }
   return false;
+}
+
+bool EsdfMap::isSensed(const Eigen::Vector3d& position) const {
+  // Get the block.
+  Block<EsdfVoxel>::Ptr block_ptr =
+      esdf_layer_->getBlockPtrByCoordinates(position.cast<FloatingPoint>());
+  if (block_ptr) {
+    const EsdfVoxel& voxel =
+        block_ptr->getVoxelByCoordinates(position.cast<FloatingPoint>());
+    return voxel.sensed;
+  }
+  return false;
+}
+
+bool EsdfMap::markAsSensed(const Eigen::Vector3d& position) {
+  // Get the block.
+  Block<EsdfVoxel>::Ptr block_ptr =
+      esdf_layer_->getBlockPtrByCoordinates(position.cast<FloatingPoint>());
+  if (block_ptr) {
+    EsdfVoxel& voxel =
+        block_ptr->getVoxelByCoordinates(position.cast<FloatingPoint>());
+    voxel.sensed = true;
+    num_sensed_voxels_++;
+    return voxel.sensed;
+  }
+  return false;
+}
+
+double EsdfMap::getPercentageSensed() const {
+  double num_surface_voxels = 0;
+  BlockIndexList blocks;
+  esdf_layer_->getAllAllocatedBlocks(&blocks);
+  // get all voxels in the layer and count the ones which represent surfaces
+  for (const BlockIndex& block_index : blocks) {
+    Block<EsdfVoxel>::Ptr esdf_block =
+        esdf_layer_->allocateBlockPtrByIndex(block_index);
+    const size_t num_voxels_per_block = esdf_block->num_voxels();
+
+    for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
+      EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);
+      if (esdf_voxel.observed && esdf_voxel.distance < 1e-4 && esdf_voxel.distance > -esdf_block->voxel_size()) {
+        num_surface_voxels++;
+      }
+    }
+  }
+  if (num_sensed_voxels_ > 1e-4 && num_surface_voxels > 1e-4) {
+    double percentage_sensed = (num_sensed_voxels_ / num_surface_voxels) * 100;
+    return percentage_sensed;
+  } else {
+    return 0;
+  }
 }
 
 // NOTE(mereweth@jpl.nasa.gov) - this function is a convenience function for

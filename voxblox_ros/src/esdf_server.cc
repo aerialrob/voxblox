@@ -313,7 +313,7 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
   bool success;
   if (publish_global_info_) {
     success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
-                                               esdf_map_->getEsdfLayerPtr());
+                                               esdf_global_map_->getEsdfLayerPtr());
   } else {
     success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
                                                esdf_map_->getEsdfLayerPtr());
@@ -329,7 +329,7 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
 
 void EsdfServer::clear() {
   if (publish_global_info_) {
-    esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
+    esdf_global_map_->getEsdfLayerPtr()->removeAllBlocks();
   } else {
     esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
   }

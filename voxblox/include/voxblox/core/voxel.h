@@ -28,6 +28,8 @@ struct EsdfVoxel {
   bool fixed = false;
   bool boundary = false;
   bool global = false;
+
+  bool sensed = false; // state representing whether the voxel has been seen by the sensors onboard or not 
   /**
    * Relative direction toward parent. If itself, then either uninitialized
    * or in the fixed frontier.
