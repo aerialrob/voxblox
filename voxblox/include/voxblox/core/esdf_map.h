@@ -86,7 +86,7 @@ class EsdfMap {
   // mark the voxel corresponding to this position as sensed
   bool markAsSensed(const Eigen::Vector3d& position) ;
   // get the percentage of the voxblox mesh which have been sensed
-  double getPercentageSensed() const;
+  bool getSensedInfo(Eigen::Vector3d *info) const;
 
   // NOTE(mereweth@jpl.nasa.gov)
   // EigenDRef is fully dynamic stride type alias for Numpy array slices
