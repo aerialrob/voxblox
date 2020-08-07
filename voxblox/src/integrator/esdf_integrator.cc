@@ -150,8 +150,10 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
     for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
       const TsdfVoxel& tsdf_voxel =
           tsdf_block->getVoxelByLinearIndex(lin_index);
+      Point coord = tsdf_block->computeCoordinatesFromLinearIndex(lin_index);
+
       // If this voxel is unobserved in the original map, skip it.
-      if (tsdf_voxel.weight < config_.min_weight) {
+      if (tsdf_voxel.weight < config_.min_weight || coord.z() < 0.3 ) {
         if (!incremental && config_.add_occupied_crust) {
           // Create a little crust of occupied voxels around.
           EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);

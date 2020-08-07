@@ -27,6 +27,7 @@ struct EsdfVoxel {
   bool in_queue = false;
   bool fixed = false;
 
+  bool sensed = false; // state representing whether the voxel has been seen by the sensors onboard or not 
   /**
    * Relative direction toward parent. If itself, then either uninitialized
    * or in the fixed frontier.

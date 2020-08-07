@@ -31,6 +31,7 @@ class EsdfServer : public TsdfServer {
   void publishAllUpdatedEsdfVoxels();
   virtual void publishSlices();
   void publishTraversable();
+  virtual void publishSensedMap();
 
   virtual void publishPointclouds();
   virtual void newPoseCallback(const Transformation& T_G_C);
@@ -82,6 +83,7 @@ class EsdfServer : public TsdfServer {
   ros::Publisher esdf_pointcloud_pub_;
   ros::Publisher esdf_slice_pub_;
   ros::Publisher traversable_pub_;
+  ros::Publisher sensed_marker_pub_;
 
   /// Publish the complete map for other nodes to consume.
   ros::Publisher esdf_map_pub_;
@@ -97,6 +99,7 @@ class EsdfServer : public TsdfServer {
 
   bool clear_sphere_for_planning_;
   bool publish_esdf_map_;
+  bool publish_sensed_map_;
   bool publish_traversable_;
   float traversability_radius_;
   bool incremental_update_;

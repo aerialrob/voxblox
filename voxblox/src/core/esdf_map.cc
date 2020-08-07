@@ -62,6 +62,63 @@ bool EsdfMap::isObserved(const Eigen::Vector3d& position) const {
   return false;
 }
 
+bool EsdfMap::isSensed(const Eigen::Vector3d& position) const {
+  // Get the block.
+  Block<EsdfVoxel>::Ptr block_ptr =
+      esdf_layer_->getBlockPtrByCoordinates(position.cast<FloatingPoint>());
+  if (block_ptr) {
+    const EsdfVoxel& voxel =
+        block_ptr->getVoxelByCoordinates(position.cast<FloatingPoint>());
+    return voxel.sensed;
+  }
+  return false;
+}
+
+bool EsdfMap::markAsSensed(const Eigen::Vector3d& position) {
+  // Get the block.
+  Block<EsdfVoxel>::Ptr block_ptr =
+      esdf_layer_->getBlockPtrByCoordinates(position.cast<FloatingPoint>());
+  if (block_ptr) {
+    EsdfVoxel& voxel =
+        block_ptr->getVoxelByCoordinates(position.cast<FloatingPoint>());
+    voxel.sensed = true;
+    num_sensed_voxels_++;
+    return voxel.sensed;
+  }
+  return false;
+}
+
+bool EsdfMap::getSensedInfo(Eigen::Vector3d *info) const {
+  double num_surface_voxels = 0;
+  double sensed_voxels = 0;
+  BlockIndexList blocks;
+  esdf_layer_->getAllAllocatedBlocks(&blocks);
+  // get all voxels in the layer and count the ones which represent surfaces
+  for (const BlockIndex& block_index : blocks) {
+    Block<EsdfVoxel>::Ptr esdf_block =
+        esdf_layer_->allocateBlockPtrByIndex(block_index);
+    const size_t num_voxels_per_block = esdf_block->num_voxels();
+  
+    for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
+      Point coord = esdf_block->computeCoordinatesFromLinearIndex(lin_index);
+      EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);
+      if (esdf_voxel.observed && esdf_voxel.distance < 1e-4 && esdf_voxel.distance > -esdf_block->voxel_size() ) {
+        num_surface_voxels++;
+        if(esdf_voxel.sensed){
+          sensed_voxels++;
+        }
+      }
+    }
+  }
+  if (num_sensed_voxels_ > 1e-4 && num_surface_voxels > 1e-4) {
+    double percentage_sensed = (num_sensed_voxels_ / num_surface_voxels) * 100;
+    (*info) << num_surface_voxels, num_sensed_voxels_, percentage_sensed;
+    return true;
+  }else{
+    return false;
+  }
+}
+
 // NOTE(mereweth@jpl.nasa.gov) - this function is a convenience function for
 // Python bindings. std::exceptions are bound to Python exceptions by pybind11,
 // allowing them to be handled in Python code idiomatically.

@@ -46,7 +46,8 @@ void EsdfServer::setupRos() {
       "esdf_slice", 1, true);
   traversable_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZI> >(
       "traversable", 1, true);
-
+  sensed_marker_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>(
+      "sensed_map", 1, true);
   esdf_map_pub_ =
       nh_private_.advertise<voxblox_msgs::Layer>("esdf_map_out", 1, false);
 
@@ -59,7 +60,8 @@ void EsdfServer::setupRos() {
   nh_private_.param("clear_sphere_for_planning", clear_sphere_for_planning_,
                     clear_sphere_for_planning_);
   nh_private_.param("publish_esdf_map", publish_esdf_map_, publish_esdf_map_);
-
+  nh_private_.param("publish_sensed_map", publish_sensed_map_,
+                    publish_sensed_map_);
   // Special output for traversable voxels. Publishes all voxels with distance
   // at least traversibility radius.
   nh_private_.param("publish_traversable", publish_traversable_,
@@ -101,6 +103,14 @@ void EsdfServer::publishSlices() {
   esdf_slice_pub_.publish(pointcloud);
 }
 
+void EsdfServer::publishSensedMap() {
+  // Publish a map of the sensed voxels
+  visualization_msgs::MarkerArray marker_array;
+  createSensedMapFromEsdfLayer(esdf_map_->getEsdfLayer(), world_frame_,
+                               &marker_array);
+  sensed_marker_pub_.publish(marker_array);
+}
+
 bool EsdfServer::generateEsdfCallback(
     std_srvs::Empty::Request& /*request*/,      // NOLINT
     std_srvs::Empty::Response& /*response*/) {  // NOLINT
@@ -128,6 +138,9 @@ void EsdfServer::publishPointclouds() {
 
   if (publish_traversable_) {
     publishTraversable();
+  }
+  if (publish_sensed_map_) {
+    publishSensedMap();
   }
 
   TsdfServer::publishPointclouds();
@@ -240,7 +253,12 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
     ROS_ERROR_THROTTLE(10, "Got an invalid ESDF map message!");
   } else {
     ROS_INFO_ONCE("Got an ESDF map from ROS topic!");
-    publishPointclouds();
+    if (publish_pointclouds_) {
+      publishPointclouds();
+    }
+    if (publish_sensed_map_) {
+      publishSensedMap();
+    }
   }
 }
 

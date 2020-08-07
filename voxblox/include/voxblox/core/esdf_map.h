@@ -23,7 +23,7 @@ class EsdfMap {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typedef std::shared_ptr<EsdfMap> Ptr;
-
+  double num_sensed_voxels_ = 0;
   struct Config {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -76,6 +76,13 @@ class EsdfMap {
                                         Eigen::Vector3d* gradient) const;
 
   bool isObserved(const Eigen::Vector3d& position) const;
+
+  // check whether the voxel corresponding to this position is sensed 
+  bool isSensed(const Eigen::Vector3d& position) const;
+  // mark the voxel corresponding to this position as sensed
+  bool markAsSensed(const Eigen::Vector3d& position) ;
+  // get the percentage of the voxblox mesh which have been sensed
+  bool getSensedInfo(Eigen::Vector3d *info) const;
 
   // NOTE(mereweth@jpl.nasa.gov)
   // EigenDRef is fully dynamic stride type alias for Numpy array slices
