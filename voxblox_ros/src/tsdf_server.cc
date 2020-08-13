@@ -636,11 +636,11 @@ void TsdfServer::clear() {
   }
 }
 
-void TsdfServer::tsdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
+void TsdfServer::tsdfMapCallback(const cblox_msgs::MapLayer& layer_msg) {
   timing::Timer receive_map_timer("map/receive_tsdf");
 
   bool success =
-      deserializeMsgToLayer<TsdfVoxel>(layer_msg, tsdf_map_->getTsdfLayerPtr());
+      deserializeMsgToLayer<TsdfVoxel>(layer_msg.tsdf_layer, tsdf_map_->getTsdfLayerPtr());
 
   if (!success) {
     ROS_ERROR_THROTTLE(10, "Got an invalid TSDF map message!");

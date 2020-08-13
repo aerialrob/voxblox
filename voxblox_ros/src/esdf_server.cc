@@ -243,14 +243,15 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   block_remove_timer.Stop();
 }
 
-void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
+void EsdfServer::esdfMapCallback(const cblox_msgs::MapLayer& layer_msg) {
   timing::Timer receive_map_timer("map/receive_esdf");
 
   bool success =
-      deserializeMsgToLayer<EsdfVoxel>(layer_msg, esdf_map_->getEsdfLayerPtr());
-
+      deserializeMsgToLayer<EsdfVoxel>(layer_msg.esdf_layer, esdf_map_->getEsdfLayerPtr());
   if (!success) {
     ROS_ERROR_THROTTLE(10, "Got an invalid ESDF map message!");
+    const bool full_euclidean_distance = true;
+    updateEsdfBatch(full_euclidean_distance);
   } else {
     ROS_INFO_ONCE("Got an ESDF map from ROS topic!");
     if (publish_pointclouds_) {

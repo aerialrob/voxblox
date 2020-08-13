@@ -25,6 +25,7 @@
 #include <voxblox/utils/color_maps.h>
 #include <voxblox_msgs/FilePath.h>
 #include <voxblox_msgs/Mesh.h>
+#include <cblox_msgs/MapLayer.h>
 
 #include "voxblox_ros/mesh_vis.h"
 #include "voxblox_ros/ptcloud_vis.h"
@@ -117,7 +118,7 @@ class TsdfServer {
   virtual void clear();
 
   /// Overwrites the layer with what's coming from the topic!
-  void tsdfMapCallback(const voxblox_msgs::Layer& layer_msg);
+  void tsdfMapCallback(const cblox_msgs::MapLayer& layer_msg);
 
  protected:
   /**

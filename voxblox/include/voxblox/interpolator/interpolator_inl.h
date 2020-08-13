@@ -488,6 +488,15 @@ inline TsdfVoxel Interpolator<TsdfVoxel>::interpVoxel(
   return voxel;
 }
 
+template <>
+inline EsdfVoxel Interpolator<EsdfVoxel>::interpVoxel(
+    const InterpVector& q_vector, const EsdfVoxel** voxels) {
+  EsdfVoxel voxel;
+  voxel.distance = interpMember(q_vector, voxels, &getVoxelSdf);
+  
+  return voxel;
+}
+
 }  // namespace voxblox
 
 #endif  // VOXBLOX_INTERPOLATOR_INTERPOLATOR_INL_H_
