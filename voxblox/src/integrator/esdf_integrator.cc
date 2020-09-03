@@ -72,11 +72,11 @@ void EsdfIntegrator::addNewRobotPosition(const Point& position,
 }
 
 void EsdfIntegrator::updateFromTsdfLayerBatch() {
-  // esdf_layer_->removeAllBlocks();
+  esdf_layer_->removeAllBlocks();
   BlockIndexList tsdf_blocks;
   tsdf_layer_->getAllAllocatedBlocks(&tsdf_blocks);
-  // tsdf_blocks.insert(tsdf_blocks.end(), updated_blocks_.begin(),
-  //                    updated_blocks_.end());
+  tsdf_blocks.insert(tsdf_blocks.end(), updated_blocks_.begin(),
+                      updated_blocks_.end());
   updated_blocks_.clear();
   updateFromTsdfBlocks(tsdf_blocks);
 }
@@ -84,8 +84,8 @@ void EsdfIntegrator::updateFromTsdfLayerBatch() {
 void EsdfIntegrator::updateFromTsdfLayer(bool clear_updated_flag) {
   BlockIndexList tsdf_blocks;
   tsdf_layer_->getAllUpdatedBlocks(Update::kEsdf, &tsdf_blocks);
-  // tsdf_blocks.insert(tsdf_blocks.end(), updated_blocks_.begin(),
-  //                    updated_blocks_.end());
+  tsdf_blocks.insert(tsdf_blocks.end(), updated_blocks_.begin(),
+                     updated_blocks_.end());
   updated_blocks_.clear();
   const bool kIncremental = true;
   updateFromTsdfBlocks(tsdf_blocks, kIncremental);
@@ -150,8 +150,11 @@ void EsdfIntegrator::updateFromEsdfLayer() {
 
         updated_voxel_list[block_index].push_back(v_index);
         continue;
+      }else{
+          esdf_global_voxel.distance = esdf_voxel.distance;
+        
       }
-      esdf_global_voxel.distance = esdf_voxel.distance;
+      
     }
   }
   esdf_global_timer.Stop();
@@ -172,7 +175,7 @@ void EsdfIntegrator::setGlobalLayer() {
       // Set the global flag to true to all voxels which are occupied or near
       // occupied spaces If their distance is smaller than the defined robot
       // radius
-      if (esdf_global_voxel.distance > config_.robot_radius) {
+      if (esdf_global_voxel.distance > config_.min_distance_m) {
         continue;
       } else {
         esdf_global_voxel.global = true;
@@ -304,7 +307,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
             if (incremental) {
               if (updateVoxelFromNeighbors(global_index)) {
                 esdf_voxel.in_queue = true;
-                //open_.push(global_index, esdf_voxel.distance);
+                open_.push(global_index, esdf_voxel.distance);
               }
             }
           }
@@ -329,7 +332,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
               esdf_voxel.fixed = false;
               raise_.push(global_index);
               esdf_voxel.in_queue = true;
-              //open_.push(global_index, esdf_voxel.distance);
+              open_.push(global_index, esdf_voxel.distance);
               num_raise++;
             } else if ((esdf_voxel.distance > 0.0f &&
                         tsdf_voxel.distance + config_.min_diff_m <
@@ -366,7 +369,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
               esdf_voxel.parent.setZero();
               raise_.push(global_index);
               esdf_voxel.in_queue = true;
-              //open_.push(global_index, esdf_voxel.distance);
+              open_.push(global_index, esdf_voxel.distance);
               num_raise++;
             }
           } else if (signum(tsdf_voxel.distance) !=

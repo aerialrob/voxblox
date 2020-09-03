@@ -32,7 +32,7 @@ EsdfServer::EsdfServer(const ros::NodeHandle& nh,
       traversability_radius_(1.0),
       incremental_update_(true),
       num_subscribers_esdf_map_(0),
-      publish_global_info_(false) {
+      load_saved_map_(false) {
   // Set up map and integrator.
   esdf_map_.reset(new EsdfMap(esdf_config));
   esdf_global_map_.reset(new EsdfMap(esdf_config));
@@ -86,9 +86,6 @@ void EsdfServer::setupRos() {
                                 &EsdfServer::updateEsdfEvent, this);
   }
 
-  nh_private_.param("publish_global_info", publish_global_info_,
-                    publish_global_info_);
-
   timing::Timer load_saved_map("load_saved_map");
   tsdf_map_ = TsdfServer::getTsdfMapPtr();
   CHECK(tsdf_map_);
@@ -120,19 +117,20 @@ void EsdfServer::publishAllUpdatedEsdfVoxels() {
   // Create a pointcloud with distance = intensity.
   pcl::PointCloud<pcl::PointXYZI> pointcloud;
   pcl::PointCloud<pcl::PointXYZI> pointcloud_local;
-  if (publish_global_info_) {
+  if (load_saved_map_) {
     createDistancePointcloudFromEsdfLayer(
         esdf_global_map_->getEsdfGlobalLayer(), &pointcloud);
+    createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(),
+                                        &pointcloud_local);
+    pointcloud_local.header.frame_id = world_frame_;
+    esdf_pointcloud_local_pub_.publish(pointcloud_local);
   } else {
     createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(),
                                           &pointcloud);
   }
-  createDistancePointcloudFromEsdfLayer(esdf_map_->getEsdfLayer(),
-                                        &pointcloud_local);
+
   pointcloud.header.frame_id = world_frame_;
-  pointcloud_local.header.frame_id = world_frame_;
   esdf_pointcloud_pub_.publish(pointcloud);
-  esdf_pointcloud_local_pub_.publish(pointcloud_local);
 }
 
 void EsdfServer::publishSlices() {
@@ -141,7 +139,7 @@ void EsdfServer::publishSlices() {
   pcl::PointCloud<pcl::PointXYZI> pointcloud;
 
   constexpr int kZAxisIndex = 2;
-  if (publish_global_info_) {
+  if (load_saved_map_) {
     createDistancePointcloudFromEsdfLayerSlice(
         esdf_global_map_->getEsdfGlobalLayer(), kZAxisIndex, slice_level_,
         &pointcloud);
@@ -171,8 +169,10 @@ bool EsdfServer::generateEsdfCallback(
 
 void EsdfServer::updateEsdfEvent(const ros::TimerEvent& /*event*/) {
   updateEsdf();
-  updateGlobalEsdf();
-  //esdf_integrator_->clearGlobalEsdfMap();
+  if (load_saved_map_) {
+    updateGlobalEsdf();
+  }
+  // Clear esdf map if mobile obstacle flag is set to true
   esdf_integrator_->clearEsdfMap();
 }
 
@@ -214,16 +214,15 @@ void EsdfServer::publishMap(bool reset_remote_map) {
     const bool only_updated = !reset_remote_map;
     timing::Timer publish_map_timer("map/publish_esdf");
     voxblox_msgs::Layer layer_msg;
-    if (publish_global_info_) {
+    if (load_saved_map_) {
       serializeLayerAsMsg<EsdfVoxel>(
           this->esdf_global_map_->getEsdfGlobalLayer(), only_updated,
           &layer_msg);
     } else {
       // serializeLayerAsMsg<EsdfVoxel>(this->esdf_map_->getEsdfLayer(),
       //                                only_updated, &layer_msg);
-      serializeLayerAsMsg<EsdfVoxel>(
-          this->esdf_map_->getEsdfLayer(), only_updated,
-          &layer_msg);
+      serializeLayerAsMsg<EsdfVoxel>(this->esdf_map_->getEsdfLayer(),
+                                     only_updated, &layer_msg);
     }
 
     if (reset_remote_map) {
@@ -247,7 +246,7 @@ bool EsdfServer::saveMap(const std::string& file_path) {
 
 bool EsdfServer::loadMap(const std::string& file_path) {
   // Load in the same order: TSDF first, then ESDF.
-  bool success_tsdf = TsdfServer::loadMap(file_path);
+  //bool success_tsdf = TsdfServer::loadMap(file_path);
 
   constexpr bool kMultipleLayerSupport = true;
   bool success_esdf = io::LoadBlocksFromFile(
@@ -255,7 +254,7 @@ bool EsdfServer::loadMap(const std::string& file_path) {
       kMultipleLayerSupport, esdf_global_map_->getEsdfGlobalLayerPtr());
   esdf_integrator_->setGlobalLayer();
 
-  return success_tsdf && success_esdf;
+  return success_esdf;
 }
 
 void EsdfServer::updateEsdf() {
@@ -296,8 +295,9 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
                             T_G_C.getRotation().y(), T_G_C.getRotation().z()};
     // Transform it to camera_link ref. frame. Now, it is in
     // /camera_depth_optical_frame
-    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, -0.707};
-    Eigen::Quaterniond quat_mult = quat_rot1 * quat;
+    // Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, -0.707};  // seat embedded
+    Eigen::Quaterniond quat_rot1{0.474, 0.524, -0.524, 0.475}; //firefly simulation
+    Eigen::Quaterniond quat_mult = quat * quat_rot1;
     esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
     esdf_integrator_->setLimitArea(T_G_C.getPosition());
   }
@@ -311,9 +311,9 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
 void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
   timing::Timer receive_map_timer("map/receive_esdf");
   bool success;
-  if (publish_global_info_) {
-    success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
-                                               esdf_map_->getEsdfLayerPtr());
+  if (load_saved_map_) {
+    success = deserializeMsgToLayer<EsdfVoxel>(
+        layer_msg, esdf_global_map_->getEsdfGlobalLayerPtr());
   } else {
     success = deserializeMsgToLayer<EsdfVoxel>(layer_msg,
                                                esdf_map_->getEsdfLayerPtr());
@@ -328,8 +328,8 @@ void EsdfServer::esdfMapCallback(const voxblox_msgs::Layer& layer_msg) {
 }
 
 void EsdfServer::clear() {
-  if (publish_global_info_) {
-    esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
+  if (load_saved_map_) {
+    esdf_global_map_->getEsdfGlobalLayerPtr()->removeAllBlocks();
   } else {
     esdf_map_->getEsdfLayerPtr()->removeAllBlocks();
   }

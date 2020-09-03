@@ -53,9 +53,19 @@ class EsdfServer : public TsdfServer {
   // Overwrites the layer with what's coming from the topic!
   void esdfMapCallback(const voxblox_msgs::Layer& layer_msg);
 
-  inline std::shared_ptr<EsdfMap> getEsdfMapPtr() { return esdf_map_; }
+  inline std::shared_ptr<EsdfMap> getEsdfMapPtr() { 
+    if(load_saved_map_){
+     return esdf_global_map_;
+    }else{
+      return esdf_map_;
+    }  
+}
   inline std::shared_ptr<const EsdfMap> getEsdfMapPtr() const {
-    return esdf_map_;
+    if(load_saved_map_){
+     return esdf_global_map_;
+    }else{
+      return esdf_map_;
+    } 
   }
 
   bool getClearSphere() const { return clear_sphere_for_planning_; }
