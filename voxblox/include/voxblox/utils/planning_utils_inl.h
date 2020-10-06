@@ -93,6 +93,7 @@ void getLimitAreaAroundPoint(const Layer<VoxelType>& layer, const Point& positio
   rel_limit_area << (x_lim - x) / voxel_size, (y_lim - y) / voxel_size,
       (z_lim - z) / voxel_size;
 
+  //std::cout << "Limit area " << rel_limit_area(0, 1) << " " << rel_limit_area(1, 1) << " " << rel_limit_area(0, 2) << " " << rel_limit_area(1, 2)<< "\n";
   // Draw walls in x
   for (FloatingPoint x = 0; x < 2; x++) {
     for (FloatingPoint y = rel_limit_area(0, 1); y <= rel_limit_area(1, 1);
