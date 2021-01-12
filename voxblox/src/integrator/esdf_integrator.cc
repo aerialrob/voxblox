@@ -153,7 +153,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
       Point coord = tsdf_block->computeCoordinatesFromLinearIndex(lin_index);
 
       // If this voxel is unobserved in the original map, skip it.
-      if (tsdf_voxel.weight < config_.min_weight || coord.z() < 0.3 ) {
+      if (tsdf_voxel.weight < config_.min_weight) {
         if (!incremental && config_.add_occupied_crust) {
           // Create a little crust of occupied voxels around.
           EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);
