@@ -39,14 +39,14 @@ class EsdfIntegrator {
      * Maximum distance to calculate the actual distance to.
      * Any values above this will be set to default_distance_m.
      */
-    FloatingPoint max_distance_m = 2.0;
+    FloatingPoint max_distance_m = 7.0;
     /**
      * Should mirror (or be smaller than) truncation distance in tsdf
      * integrator.
      */
     FloatingPoint min_distance_m = 0.2;
     /// Default distance set for unknown values and values > max_distance_m.
-    FloatingPoint default_distance_m = 2.0;
+    FloatingPoint default_distance_m = 7.0;
     /**
      * For cheaper but less accurate map updates: the minimum difference in
      * a voxel distance, before the change is propagated.

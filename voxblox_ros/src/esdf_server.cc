@@ -22,7 +22,7 @@ EsdfServer::EsdfServer(const ros::NodeHandle& nh,
                        const MeshIntegratorConfig& mesh_config)
     : TsdfServer(nh, nh_private, tsdf_config, tsdf_integrator_config,
                  mesh_config),
-      clear_sphere_for_planning_(false),
+      clear_sphere_for_planning_(true),
       publish_esdf_map_(false),
       publish_traversable_(false),
       traversability_radius_(1.0),
