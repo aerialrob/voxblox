@@ -157,6 +157,8 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
   nh_private.param("esdf_add_occupied_crust",
                    esdf_integrator_config.add_occupied_crust,
                    esdf_integrator_config.add_occupied_crust);
+  nh_private.param("clear_fov", esdf_integrator_config.clear_fov,
+                   esdf_integrator_config.clear_fov);
   if (esdf_integrator_config.default_distance_m <
       esdf_integrator_config.max_distance_m) {
     esdf_integrator_config.default_distance_m =

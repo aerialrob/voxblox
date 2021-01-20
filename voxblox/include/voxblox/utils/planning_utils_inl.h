@@ -99,6 +99,77 @@ void fillSphereAroundPoint(const Point& center, const FloatingPoint radius,
   }
 }
 
+template <typename VoxelType>
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& position,
+                       Eigen::Quaterniond rotation,
+                       FloatingPoint max_depth,
+                       HierarchicalIndexMap* block_voxel_list) {
+  CHECK_NOTNULL(block_voxel_list);
+  float voxel_size = layer.voxel_size();
+  float voxel_size_inv = 1.0 / layer.voxel_size();
+  int voxels_per_side = layer.voxels_per_side();
+
+  const GlobalIndex center_index =
+      getGridIndexFromPoint<GlobalIndex>(position, voxel_size_inv);
+
+  // Initialize camera
+  const double pi = std::acos(-1);
+  double horizontal_fov = (49.5 * pi) / 180;
+  double vertical_fov = (60 * pi) / 180;
+
+  const FloatingPoint max_distance_in_voxels = max_depth / voxel_size;
+  double tan_half_horizontal_fov = tanf(horizontal_fov / 2.0);
+  double tan_half_vertical_fov = tanf(vertical_fov / 2.0);
+
+  for (FloatingPoint x = 0; x <= max_distance_in_voxels; x++) {
+    // Create the y and z bound as a function of the range x
+    float ybound = (x * voxel_size * tan_half_horizontal_fov) / voxel_size;
+    float zbound = (x * voxel_size * tan_half_vertical_fov) / voxel_size;
+
+    for (FloatingPoint y = -ybound; y <= ybound; y++) {
+      for (FloatingPoint z = -zbound; z <= zbound; z++) {
+        Point point_voxel_space(x, y, z);
+        Eigen::Vector3d position{x, y, z};
+
+        // Rotate position of voxels using the orientation of the odometry
+        Eigen::Vector3d position_rot =
+            rotation.toRotationMatrix() * position;
+        Point point_voxel_space_rot(position_rot[0], position_rot[1],
+                                    position_rot[2]);
+        // check if point is inside the spheres radius
+        if (point_voxel_space_rot.norm() <= max_distance_in_voxels) {
+          GlobalIndex voxel_offset_index(std::floor(point_voxel_space_rot.x()),
+                                         std::floor(point_voxel_space_rot.y()),
+                                         std::floor(point_voxel_space_rot.z()));
+          // Get the block and voxel indices from this.
+          BlockIndex block_index;
+          VoxelIndex voxel_index;
+
+          getBlockAndVoxelIndexFromGlobalVoxelIndex(
+              voxel_offset_index + center_index, voxels_per_side, &block_index,
+              &voxel_index);
+          (*block_voxel_list)[block_index].push_back(voxel_index);
+        }
+      }
+    }
+  }
+}
+
+template <typename VoxelType>
+void getAndAllocateFOVAroundPoint(const Point& position,
+                                  Eigen::Quaterniond rotation,
+                                  FloatingPoint max_depth,
+                                  Layer<VoxelType>* layer,
+                                  HierarchicalIndexMap* block_voxel_list) {
+  CHECK_NOTNULL(layer);
+  CHECK_NOTNULL(block_voxel_list);
+  getFOVAroundPoint(*layer, position, rotation, max_depth, block_voxel_list);
+  for (auto it = block_voxel_list->begin(); it != block_voxel_list->end();
+       ++it) {
+    layer->allocateBlockPtrByIndex(it->first);
+  }
+}
+
 // Similar to above, clears the area around the specified point, marking it as
 // hallucinated and fixed.
 template <typename VoxelType>

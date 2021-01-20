@@ -70,6 +70,11 @@ class EsdfIntegrator {
     bool add_occupied_crust = false;
 
     /**
+     * For marking the camera fov as clear around each robot position.
+     */
+    bool clear_fov = false;
+
+    /**
      * For marking unknown space around a robot as free or occupied, these are
      * the radiuses used around each robot position.
      */
@@ -86,7 +91,7 @@ class EsdfIntegrator {
    * Points added this way are marked as "hallucinated," and can subsequently
    * be cleared based on this.
    */
-  void addNewRobotPosition(const Point& position);
+  void addNewRobotPosition(const Point& position, Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the

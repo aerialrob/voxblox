@@ -23,6 +23,18 @@ void getAndAllocateSphereAroundPoint(const Point& center, FloatingPoint radius,
                                      Layer<VoxelType>* layer,
                                      HierarchicalIndexMap* block_voxel_list);
 
+
+/// Gets the indices of all points within the fov.
+template <typename VoxelType>
+void getFOVAroundPoint(const Layer<VoxelType>& layer, const Point& position, Eigen::Quaterniond rotation, FloatingPoint radius, HierarchicalIndexMap* block_voxel_list);
+
+/**
+ * Gets the indices of all points insider the fov, and also allocates any
+ * blocks that don't already exist.
+ */
+template <typename VoxelType>
+void getAndAllocateFOVAroundPoint(const Point& position, Eigen::Quaterniond rotation, FloatingPoint max_depth, Layer<VoxelType>* layer, HierarchicalIndexMap* block_voxel_list);                        
+
 /**
  * Tools for manually editing a set of voxels. Sets the values around a sphere
  * to be artifically free or occupied, and marks them as hallucinated.
