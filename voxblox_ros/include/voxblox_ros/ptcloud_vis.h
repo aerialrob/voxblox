@@ -176,7 +176,6 @@ void createOccupancyBlocksFromLayer(
 template <typename VoxelType>
 void createSensedMapFromLayer(
     const Layer<VoxelType>& layer,
-    const ShouldVisualizeVoxelFunctionType<VoxelType>& vis_function,
     const std::string& frame_id,
     visualization_msgs::MarkerArray* marker_array) {
   CHECK_NOTNULL(marker_array);
@@ -206,7 +205,7 @@ void createSensedMapFromLayer(
          ++linear_index) {
       Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
       VoxelType voxel = block.getVoxelByLinearIndex(linear_index);
-       //if (vis_function(voxel, coord)) {
+
          if(voxel.sensed && voxel.observed){
           geometry_msgs::Point cube_center;
           cube_center.x = coord.x();
@@ -444,22 +443,8 @@ inline void createDistancePointcloudFromEsdfLayer(
 inline void createSensedMapFromEsdfLayer(
     const Layer<EsdfVoxel>& layer, const std::string& frame_id,
     visualization_msgs::MarkerArray* marker_array) {
-  createSensedMapFromLayer<EsdfVoxel>(
-      layer,
-      std::bind(visualizeSensedEsdfVoxels, std::placeholders::_1,
-                std::placeholders::_2, layer.voxel_size()),
-      frame_id, marker_array);
+  createSensedMapFromLayer<EsdfVoxel>(layer, frame_id, marker_array);
 }
-
-// inline void createOccupancyBlocksFromTsdfLayer(
-//     const Layer<TsdfVoxel>& layer, const std::string& frame_id,
-//     visualization_msgs::MarkerArray* marker_array) {
-//   CHECK_NOTNULL(marker_array);
-//   createOccupancyBlocksFromLayer<TsdfVoxel>(
-//       layer, std::bind(visualizeOccupiedTsdfVoxels, std::placeholders::_1,
-//                        std::placeholders::_2, layer.voxel_size()),
-//       frame_id, marker_array);
-// }
 
 inline void createFreePointcloudFromEsdfLayer(
     const Layer<EsdfVoxel>& layer, float min_distance,
