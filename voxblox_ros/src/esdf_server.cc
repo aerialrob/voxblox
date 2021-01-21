@@ -240,7 +240,8 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
     // /camera_depth_optical_frame
     Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
     Eigen::Quaterniond quat_mult = quat_rot1 * quat;
-    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(),quat_mult);
+    //esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(),quat_mult);
+    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition());
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");

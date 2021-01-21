@@ -21,22 +21,24 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 }
 
 // Used for planning - allocates sphere around as observed but occupied,
-// and clears space in a sphere around current position.
-void EsdfIntegrator::addNewRobotPosition(const Point& position, Eigen::Quaterniond rotation) {
+// and clears space in a sphere around current position. Eigen::Quaterniond rotation
+void EsdfIntegrator::addNewRobotPosition(const Point& position) {
   timing::Timer clear_timer("esdf/clear_radius");
 
   // First set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
   utils::getAndAllocateSphereAroundPoint(position, config_.clear_sphere_radius,
-                                         esdf_layer_, &block_voxel_list);
+                                          esdf_layer_, &block_voxel_list);
+
+
   sphere_timer.Stop();
 
-  if (config_.clear_fov) {
-    utils::getAndAllocateFOVAroundPoint(position, rotation,
-                                        config_.max_distance_m, esdf_layer_,
-                                        &block_voxel_list);
-  }
+  // if (config_.clear_fov) {
+  //   utils::getAndAllocateFOVAroundPoint(position, rotation,
+  //                                       config_.max_distance_m, esdf_layer_,
+  //                                       &block_voxel_list);
+  // }
   for (const std::pair<BlockIndex, VoxelIndexList>& kv : block_voxel_list) {
     // Get block.
     Block<EsdfVoxel>::Ptr block_ptr = esdf_layer_->getBlockPtrByIndex(kv.first);
