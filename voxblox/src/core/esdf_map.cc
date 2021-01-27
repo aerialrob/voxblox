@@ -100,7 +100,6 @@ bool EsdfMap::getSensedInfo(Eigen::Vector3d *info) const {
     const size_t num_voxels_per_block = esdf_block->num_voxels();
   
     for (size_t lin_index = 0u; lin_index < num_voxels_per_block; ++lin_index) {
-      Point coord = esdf_block->computeCoordinatesFromLinearIndex(lin_index);
       EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);
       if (esdf_voxel.observed && esdf_voxel.distance < 1e-4 && esdf_voxel.distance > -esdf_block->voxel_size() ) {
         num_surface_voxels++;
