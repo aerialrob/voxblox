@@ -89,9 +89,9 @@ class EsdfIntegrator {
    *Used for planning - allocates sphere around as observed but occupied,
    * and clears space in a smaller sphere around current position.
    * Points added this way are marked as "hallucinated," and can subsequently
-   * be cleared based on this. Eigen::Quaterniond rotation
+   * be cleared based on this. 
    */
-  void addNewRobotPosition(const Point& position);
+  void addNewRobotPosition(const Point& position, Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the
@@ -179,6 +179,8 @@ class EsdfIntegrator {
 
   size_t voxels_per_side_;
   FloatingPoint voxel_size_;
+
+  Point current_robot_position_;
 
   IndexSet updated_blocks_;
 };

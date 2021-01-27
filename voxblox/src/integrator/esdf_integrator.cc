@@ -21,10 +21,12 @@ EsdfIntegrator::EsdfIntegrator(const Config& config,
 }
 
 // Used for planning - allocates sphere around as observed but occupied,
-// and clears space in a sphere around current position. Eigen::Quaterniond rotation
-void EsdfIntegrator::addNewRobotPosition(const Point& position) {
+// and clears space in a sphere around current position.
+void EsdfIntegrator::addNewRobotPosition(const Point& position,
+                                         Eigen::Quaterniond rotation) {
   timing::Timer clear_timer("esdf/clear_radius");
 
+  current_robot_position_ = position;
   // First set all in inner sphere to free.
   HierarchicalIndexMap block_voxel_list;
   timing::Timer sphere_timer("esdf/clear_radius/get_sphere");
@@ -161,7 +163,7 @@ void EsdfIntegrator::updateFromTsdfBlocks(const BlockIndexList& tsdf_blocks,
       Point coord = tsdf_block->computeCoordinatesFromLinearIndex(lin_index);
 
       // If this voxel is unobserved in the original map, skip it.
-      if (tsdf_voxel.weight < config_.min_weight) {
+      if (tsdf_voxel.weight < config_.min_weight ) {
         if (!incremental && config_.add_occupied_crust) {
           // Create a little crust of occupied voxels around.
           EsdfVoxel& esdf_voxel = esdf_block->getVoxelByLinearIndex(lin_index);
