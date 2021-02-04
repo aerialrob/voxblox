@@ -206,7 +206,6 @@ void createSensedMapFromLayer(
          ++linear_index) {
       Point coord = block.computeCoordinatesFromLinearIndex(linear_index);
       VoxelType voxel = block.getVoxelByLinearIndex(linear_index);
-       //if (vis_function(voxel, coord)) {
          if(voxel.sensed && voxel.observed){
           geometry_msgs::Point cube_center;
           cube_center.x = coord.x();
@@ -214,18 +213,10 @@ void createSensedMapFromLayer(
           cube_center.z = coord.z();
           block_marker.points.push_back(cube_center);
           std_msgs::ColorRGBA color_msg;
-
-          //if (voxel.sensed) {
-            color_msg.r = 0.0;
-            color_msg.g = 1.0;
-            color_msg.b = 0.0;
-            color_msg.a = 0.5;
-          // } else {
-          //   color_msg.r = 1.0;
-          //   color_msg.g = 1.0;
-          //   color_msg.b = 1.0;
-          //   color_msg.a = 0.5;
-          // }
+          color_msg.r = 0.0;
+          color_msg.g = 1.0;
+          color_msg.b = 0.0;
+          color_msg.a = 0.5;
           block_marker.colors.push_back(color_msg);
         }
     }
