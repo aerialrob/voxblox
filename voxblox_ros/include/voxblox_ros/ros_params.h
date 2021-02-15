@@ -151,6 +151,8 @@ inline EsdfIntegrator::Config getEsdfIntegratorConfigFromRosParam(
   nh_private.param("clear_sphere_radius",
                    esdf_integrator_config.clear_sphere_radius,
                    esdf_integrator_config.clear_sphere_radius);
+  nh_private.param("clear_fov", esdf_integrator_config.clear_fov,
+                   esdf_integrator_config.clear_fov);
   nh_private.param("occupied_sphere_radius",
                    esdf_integrator_config.occupied_sphere_radius,
                    esdf_integrator_config.occupied_sphere_radius);

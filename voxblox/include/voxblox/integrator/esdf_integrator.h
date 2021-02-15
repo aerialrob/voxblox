@@ -75,6 +75,7 @@ class EsdfIntegrator {
      */
     FloatingPoint clear_sphere_radius = 1.5;
     FloatingPoint occupied_sphere_radius = 5.0;
+    bool clear_fov = false;
   };
 
   EsdfIntegrator(const Config& config, Layer<TsdfVoxel>* tsdf_layer,
@@ -86,7 +87,7 @@ class EsdfIntegrator {
    * Points added this way are marked as "hallucinated," and can subsequently
    * be cleared based on this.
    */
-  void addNewRobotPosition(const Point& position);
+  void addNewRobotPosition(const Point& position, Eigen::Quaterniond rotation);
 
   /**
    *Update from a TSDF layer in batch, clearing the current ESDF layer in the

@@ -234,7 +234,13 @@ void EsdfServer::setTraversabilityRadius(float traversability_radius) {
 
 void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
   if (clear_sphere_for_planning_) {
-    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition());
+    Eigen::Quaterniond quat{T_G_C.getRotation().w(), T_G_C.getRotation().x(),
+                            T_G_C.getRotation().y(), T_G_C.getRotation().z()};
+    // Transform it to camera_link ref. frame. Now, it is in
+    // /camera_depth_optical_frame
+    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
+    Eigen::Quaterniond quat_mult = quat_rot1 * quat;
+    esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
   }
 
   timing::Timer block_remove_timer("remove_distant_blocks");

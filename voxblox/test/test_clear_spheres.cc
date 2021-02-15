@@ -133,7 +133,7 @@ TEST_P(ClearSphereTest, EsdfIntegrators) {
   constexpr bool clear_updated_flag = true;
 
   // Ok for the first pose... Let's do this one at a time.
-  esdf_integrator.addNewRobotPosition(poses_[i].getPosition());
+  //esdf_integrator.addNewRobotPosition(poses_[i].getPosition());
 
   // Output for debugging.
   io::SaveLayer(tsdf_layer, "esdf_clear1a.voxblox", true);
@@ -151,7 +151,7 @@ TEST_P(ClearSphereTest, EsdfIntegrators) {
   io::SaveLayer(esdf_layer, "esdf_clear1b.voxblox", false);
   i = 2;
 
-  esdf_integrator.addNewRobotPosition(poses_[i].getPosition());
+  //esdf_integrator.addNewRobotPosition(poses_[i].getPosition());
 
   io::SaveLayer(tsdf_layer, "esdf_clear2a.voxblox", true);
   io::SaveLayer(esdf_layer, "esdf_clear2a.voxblox", false);

@@ -240,7 +240,7 @@ void SimulationServer::generateSDF() {
     }
 
     if (add_robot_pose_) {
-      esdf_integrator_->addNewRobotPosition(view_origin);
+      //esdf_integrator_->addNewRobotPosition(view_origin);
     }
 
     const bool clear_updated_flag = true;
