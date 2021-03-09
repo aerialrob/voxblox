@@ -238,7 +238,8 @@ void EsdfServer::newPoseCallback(const Transformation& T_G_C) {
                             T_G_C.getRotation().y(), T_G_C.getRotation().z()};
     // Transform it to camera_link ref. frame. Now, it is in
     // /camera_depth_optical_frame
-    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};
+    //Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, 0.707};   // iontel looking front
+    Eigen::Quaterniond quat_rot1{0.707, 0.0, 0.0, -0.707};    // intel 45 deg down 
     Eigen::Quaterniond quat_mult = quat_rot1 * quat;
     esdf_integrator_->addNewRobotPosition(T_G_C.getPosition(), quat_mult);
   }
